@@ -150,18 +150,21 @@ h3 {
   font-weight: 800;
 }
 
-.howto-grid {
+.howto-steps {
   border-top: 1px solid var(--line);
+  color: var(--muted);
   display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  line-height: 1.45;
+  list-style-position: outside;
   margin-top: 0.85rem;
+  margin-bottom: 0;
   padding-top: 0.85rem;
+  padding-left: 1.3rem;
 }
 
-.howto-grid p {
-  color: var(--muted);
-  margin-bottom: 0;
+.howto-steps strong {
+  color: var(--ink);
 }
 
 .workspace {
@@ -530,7 +533,7 @@ th {
     flex-direction: column;
   }
 
-  .howto-grid,
+  .howto-steps,
   .form-grid,
   .form-grid.compact,
   .output-row,

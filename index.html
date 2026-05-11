@@ -18,12 +18,16 @@
 
       <details class="howto">
         <summary>How to use this tool</summary>
-        <div class="howto-grid">
-          <p>Start with the content format because format controls the job the post needs to do.</p>
-          <p>Match the format to the audience's awareness stage, then choose a hook intentionally.</p>
-          <p>Generate hooks first, select one, then create the platform-specific caption or storyboard.</p>
-          <p>Keep the caption and image separate. Add image text later in Canva, CapCut, or another editor.</p>
-        </div>
+        <ol class="howto-steps">
+          <li><strong>Content Setup:</strong> Select the platform, awareness stage, format purpose, and content format. Use Other when the preset list does not fit the assignment.</li>
+          <li><strong>Content Inputs:</strong> Enter the product or brand, audience, key problem or desire, and main benefit. Be specific; the hook and caption will be built from this context.</li>
+          <li><strong>Hook Builder:</strong> Choose a hook type and generate several hooks. Read the rationale, then select the hook that best fits the audience and format.</li>
+          <li><strong>Output Controls:</strong> Set the number of variants, caption length, tone, emoji level, hashtag count, CTA type, and whether an engagement question should be included.</li>
+          <li><strong>Generate Content:</strong> Review the platform-specific outputs. For TikTok, turn on storyboard mode when you need scenes, timing, audio, and Canva or CapCut build notes.</li>
+          <li><strong>Edit Or Revise:</strong> Either edit the selected caption manually or write a short instruction and ask AI to revise it. Do not treat the first draft as final.</li>
+          <li><strong>Image Asset:</strong> Generate image prompts only after the caption is ready. Edit the prompt yourself or ask AI to improve it before generating images.</li>
+          <li><strong>Download:</strong> Export the caption, storyboard, image prompts, image files, or the full package. Caption and image stay separate; add any text overlays later in Canva or another design tool.</li>
+        </ol>
       </details>
 
       <form id="labForm" class="workspace">
@@ -94,8 +98,36 @@
           <div class="section-heading">
             <span class="step">2</span>
             <div>
+              <h2>Content Inputs</h2>
+              <p>Add the minimum context needed for useful platform content.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <label>
+              Product or brand
+              <input name="brand" placeholder="Example: Campus Coffee Club" required />
+            </label>
+            <label>
+              Audience
+              <input name="audience" placeholder="Example: busy college students" required />
+            </label>
+            <label>
+              Key problem or desire
+              <textarea name="problem" placeholder="What problem, tension, or aspiration should the content address?" required></textarea>
+            </label>
+            <label>
+              Main benefit
+              <textarea name="benefit" placeholder="What outcome should the audience care about?" required></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel step-panel">
+          <div class="section-heading">
+            <span class="step">3</span>
+            <div>
               <h2>Hook Builder</h2>
-              <p>Choose the opening move before generating the full caption.</p>
+              <p>Choose the opening move after the content context is clear.</p>
             </div>
           </div>
           <div class="form-grid compact">
@@ -139,34 +171,6 @@
             <button type="button" class="secondary" id="generateHooksBtn">Generate Hooks</button>
           </div>
           <div id="hookOptions" class="hook-options"></div>
-        </section>
-
-        <section class="panel step-panel">
-          <div class="section-heading">
-            <span class="step">3</span>
-            <div>
-              <h2>Content Inputs</h2>
-              <p>Add the minimum context needed for useful platform content.</p>
-            </div>
-          </div>
-          <div class="form-grid">
-            <label>
-              Product or brand
-              <input name="brand" placeholder="Example: Campus Coffee Club" required />
-            </label>
-            <label>
-              Audience
-              <input name="audience" placeholder="Example: busy college students" required />
-            </label>
-            <label>
-              Key problem or desire
-              <textarea name="problem" placeholder="What problem, tension, or aspiration should the content address?" required></textarea>
-            </label>
-            <label>
-              Main benefit
-              <textarea name="benefit" placeholder="What outcome should the audience care about?" required></textarea>
-            </label>
-          </div>
         </section>
 
         <section class="panel step-panel">

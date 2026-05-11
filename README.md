@@ -1,6 +1,6 @@
 # Social Creative Lab
 
-A classroom tool for helping students create platform-native social media content for Facebook, Instagram, and TikTok. The workflow starts with content format, then moves through hook selection, content inputs, output controls, generation, revision, image planning, optional image generation, and downloads.
+A classroom tool for helping students create platform-native social media content for Facebook, Instagram, and TikTok. The workflow starts with content setup, then moves through content inputs, hook selection, output controls, generation, revision, image planning, optional image generation, and downloads.
 
 ## What It Does
 

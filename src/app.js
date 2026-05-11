@@ -113,6 +113,7 @@ form.addEventListener("change", () => {
 });
 
 generateHooksBtn.addEventListener("click", async () => {
+  if (!validateHookPrereqs()) return;
   await withLoading(generateHooksBtn, async () => {
     const payload = collectPayload("hooks");
     const data = await postJson("/.netlify/functions/generate", payload, () => mockGenerate(payload));
@@ -306,6 +307,32 @@ function collectPayload(mode) {
     form: formValues,
     selectedHook: selectedHookText()
   };
+}
+
+function validateHookPrereqs() {
+  const requiredNames = [
+    "platform",
+    "awarenessStage",
+    "formatPurpose",
+    "contentFormat",
+    "brand",
+    "audience",
+    "problem",
+    "benefit",
+    "hookType",
+    "hookCount"
+  ];
+
+  for (const name of requiredNames) {
+    const field = form.elements[name];
+    if (field && !field.reportValidity()) return false;
+    const otherId = field?.dataset?.other;
+    if (field?.value === "Other" && otherId) {
+      const otherField = document.getElementById(otherId);
+      if (otherField && !otherField.reportValidity()) return false;
+    }
+  }
+  return true;
 }
 
 function collectImagePayload(mode) {
