@@ -1,0 +1,22 @@
+{
+  "name": "social-creative-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A classroom social media content lab for Facebook, Instagram, and TikTok using Gemini and Netlify Functions.",
+  "scripts": {
+    "start": "npx netlify dev",
+    "serve": "npx serve .",
+    "check": "node --check netlify/functions/generate.js && node --check netlify/functions/revise.js && node --check netlify/functions/image.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.50.1"
+  },
+  "devDependencies": {
+    "netlify-cli": "^21.6.0",
+    "serve": "^14.2.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

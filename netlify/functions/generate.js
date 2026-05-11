@@ -1,0 +1,131 @@
+import { generateJson, jsonResponse, mockGenerate, readPayload } from "./_shared.js";
+
+export async function handler(event) {
+  try {
+    const payload = readPayload(event);
+    const fallback = mockGenerate(payload);
+    const form = payload.form || {};
+
+    if (!process.env.GEMINI_API_KEY) {
+      return jsonResponse(fallback);
+    }
+
+    const prompt = payload.mode === "hooks" ? buildHookPrompt(form) : buildFullPrompt(form, payload.selectedHook);
+    const generated = await generateJson(prompt);
+
+    return jsonResponse({
+      ...fallback,
+      ...generated,
+      demo: false
+    });
+  } catch (error) {
+    return jsonResponse({ error: error.message || "Generation failed" }, error.statusCode || 500);
+  }
+}
+
+function buildHookPrompt(form) {
+  return `You are a senior social media creative strategist teaching undergraduate students.
+
+Return only valid JSON matching:
+{
+  "hooks": [
+    { "text": "hook text", "rationale": "one sentence explaining why it fits" }
+  ]
+}
+
+Generate ${form.hookCount || 3} hooks.
+
+Rules:
+- Platform: ${form.platform}
+- Awareness stage: ${form.awarenessStage}
+- Format purpose: ${form.formatPurpose}
+- Content format: ${form.contentFormat}
+- Hook type: ${form.hookType}
+- Brand/product: ${form.brand}
+- Audience: ${form.audience}
+- Key problem or desire: ${form.problem}
+- Main benefit: ${form.benefit}
+- Proof/support: ${form.proof}
+- CTA: ${form.cta}
+- Make hooks concrete and specific.
+- Do not write the full caption.`;
+}
+
+function buildFullPrompt(form, selectedHook) {
+  const wantsStoryboard = form.platform === "TikTok" && form.storyboardMode;
+  return `You are a senior social media creative strategist building a classroom training tool.
+
+Return only valid JSON matching this shape:
+{
+  "hooks": [
+    { "text": "hook text", "rationale": "one sentence" }
+  ],
+  "variants": [
+    {
+      "title": "Version 1",
+      "hook": "hook text",
+      "caption": "platform-ready caption",
+      "cta": "call to action",
+      "hashtags": ["#tag"],
+      "engagementQuestion": "Facebook-only question or empty string",
+      "imageConcept": "clean image concept with no visible text",
+      "teachingNote": "short note explaining the strategic choice"
+    }
+  ],
+  "storyboard": null,
+  "imagePrompts": [
+    { "title": "Image 1", "prompt": "image prompt with no visible text" }
+  ]
+}
+
+If storyboard is requested, replace null with:
+{
+  "recommendedLength": "15s, 30s, or 45s",
+  "pacing": "pacing description",
+  "audioStyle": "audio or voiceover style",
+  "scenes": [
+    {
+      "scene": "1",
+      "time": "0-3s",
+      "visual": "what viewer sees",
+      "action": "what happens",
+      "audio": "voiceover or sound cue",
+      "onScreenText": "text overlay suggestion only, not for generated image",
+      "purpose": "Stop scroll / Build interest / Build trust / Convert"
+    }
+  ],
+  "buildNotes": "Canva/CapCut build guidance"
+}
+
+Inputs:
+- Platform: ${form.platform}
+- Awareness stage: ${form.awarenessStage}
+- Format purpose: ${form.formatPurpose}
+- Content format: ${form.contentFormat}
+- Hook type: ${form.hookType}
+- Selected hook to consider: ${selectedHook || "None selected"}
+- Brand/product: ${form.brand}
+- Audience: ${form.audience}
+- Key problem or desire: ${form.problem}
+- Main benefit: ${form.benefit}
+- Proof/support: ${form.proof}
+- CTA: ${form.cta}
+- Number of variants: ${form.variantCount}
+- Caption length: ${form.captionLength}
+- Tone: ${form.tone}
+- Emoji level: ${form.emojiLevel}
+- Hashtag count: ${form.hashtagCount}
+- CTA type: ${form.ctaType}
+- Storyboard requested: ${wantsStoryboard ? "yes" : "no"}
+
+Platform requirements:
+- Facebook: include hook, caption, CTA, engagementQuestion, imageConcept.
+- Instagram: include first-line hook as hook, caption, hashtags, CTA, imageConcept, and mention feed/reel/carousel fit in teachingNote.
+- TikTok: include 3-second hook as hook, caption, hashtags, CTA, visual concept, and storyboard if requested.
+
+Content rules:
+- Use the selected content format intentionally.
+- If a claim is not supported by the proof input, weaken it or frame it as a benefit direction.
+- Keep generated image concepts and image prompts free of visible text, captions, typography, logos, and labels.
+- Captions and images are separate assets.`;
+}

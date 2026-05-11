@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Social Creative Lab</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Social Media Advertising</p>
+          <h1>Creative Strategy Lab</h1>
+        </div>
+        <div class="status-pill" id="saveStatus">Ready</div>
+      </header>
+
+      <details class="howto">
+        <summary>How to use this tool</summary>
+        <div class="howto-grid">
+          <p>Start with the content format because format controls the job the post needs to do.</p>
+          <p>Match the format to the audience's awareness stage, then choose a hook intentionally.</p>
+          <p>Generate hooks first, select one, then create the platform-specific caption or storyboard.</p>
+          <p>Keep the caption and image separate. Add image text later in Canva, CapCut, or another editor.</p>
+        </div>
+      </details>
+
+      <form id="labForm" class="workspace">
+        <section class="panel step-panel">
+          <div class="section-heading">
+            <span class="step">1</span>
+            <div>
+              <h2>Content Setup</h2>
+              <p>Choose the platform, awareness stage, purpose, and content format.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <label>
+              Platform
+              <select data-other="platformOther" name="platform" required>
+                <option value="Facebook">Facebook</option>
+                <option value="Instagram">Instagram</option>
+                <option value="TikTok">TikTok</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="platformOther" name="platformOther" placeholder="Specify platform" />
+            </label>
+
+            <label>
+              Awareness stage
+              <select data-other="awarenessOther" name="awarenessStage" required>
+                <option value="Unaware">Unaware</option>
+                <option value="Problem-aware">Problem-aware</option>
+                <option value="Solution-aware">Solution-aware</option>
+                <option value="Product-aware">Product-aware</option>
+                <option value="Most-aware">Most-aware</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="awarenessOther" name="awarenessOther" placeholder="Specify awareness stage" />
+            </label>
+
+            <label>
+              Format purpose
+              <select data-other="formatPurposeOther" name="formatPurpose" required>
+                <option value="Educate and reveal">Educate and reveal</option>
+                <option value="Compare and demonstrate">Compare and demonstrate</option>
+                <option value="Prove and build trust">Prove and build trust</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="formatPurposeOther" name="formatPurposeOther" placeholder="Specify purpose" />
+            </label>
+
+            <label>
+              Content format
+              <select data-other="contentFormatOther" name="contentFormat" required>
+                <option value="Testimonial">Testimonial</option>
+                <option value="Demo">Demo</option>
+                <option value="Listicle">Listicle</option>
+                <option value="Montage">Montage</option>
+                <option value="Split screen">Split screen</option>
+                <option value="Behind the scenes">Behind the scenes</option>
+                <option value="Tutorial / How-to">Tutorial / How-to</option>
+                <option value="Unboxing">Unboxing</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="contentFormatOther" name="contentFormatOther" placeholder="Specify content format" />
+            </label>
+          </div>
+          <div class="format-guidance" id="formatGuidance"></div>
+        </section>
+
+        <section class="panel step-panel">
+          <div class="section-heading">
+            <span class="step">2</span>
+            <div>
+              <h2>Hook Builder</h2>
+              <p>Choose the opening move before generating the full caption.</p>
+            </div>
+          </div>
+          <div class="form-grid compact">
+            <label>
+              Hook type
+              <select data-other="hookTypeOther" name="hookType" required>
+                <option value="Confession">Confession</option>
+                <option value="Bold claim">Bold claim</option>
+                <option value="Relatability">Relatability</option>
+                <option value="Contrast">Contrast</option>
+                <option value="Curiosity">Curiosity</option>
+                <option value="Question">Question</option>
+                <option value="Stat shock">Stat shock</option>
+                <option value="Mistake to avoid">Mistake to avoid</option>
+                <option value="Myth busting">Myth busting</option>
+                <option value="POV">POV</option>
+                <option value="Before/after">Before/after</option>
+                <option value="Social proof">Social proof</option>
+                <option value="Objection lead">Objection lead</option>
+                <option value="Watch me/demo">Watch me/demo</option>
+                <option value="Listicle">Listicle</option>
+                <option value="Challenge">Challenge</option>
+                <option value="Time-bound promise">Time-bound promise</option>
+                <option value="Identity callout">Identity callout</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="hookTypeOther" name="hookTypeOther" placeholder="Specify hook type" />
+            </label>
+            <label>
+              Hook count
+              <select data-other="hookCountOther" name="hookCount">
+                <option value="3">3</option>
+                <option value="5">5</option>
+                <option value="7">7</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="hookCountOther" name="hookCountOther" placeholder="Specify count" inputmode="numeric" />
+            </label>
+          </div>
+          <div class="button-row">
+            <button type="button" class="secondary" id="generateHooksBtn">Generate Hooks</button>
+          </div>
+          <div id="hookOptions" class="hook-options"></div>
+        </section>
+
+        <section class="panel step-panel">
+          <div class="section-heading">
+            <span class="step">3</span>
+            <div>
+              <h2>Content Inputs</h2>
+              <p>Add the minimum context needed for useful platform content.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <label>
+              Product or brand
+              <input name="brand" placeholder="Example: Campus Coffee Club" required />
+            </label>
+            <label>
+              Audience
+              <input name="audience" placeholder="Example: busy college students" required />
+            </label>
+            <label>
+              Key problem or desire
+              <textarea name="problem" placeholder="What problem, tension, or aspiration should the content address?" required></textarea>
+            </label>
+            <label>
+              Main benefit
+              <textarea name="benefit" placeholder="What outcome should the audience care about?" required></textarea>
+            </label>
+            <label>
+              Proof or support
+              <textarea name="proof" placeholder="What supports the benefit? Demo detail, review, statistic, example, guarantee, or observation." required></textarea>
+            </label>
+            <label>
+              CTA
+              <input name="cta" placeholder="Example: Try it this week" required />
+            </label>
+          </div>
+        </section>
+
+        <section class="panel step-panel">
+          <div class="section-heading">
+            <span class="step">4</span>
+            <div>
+              <h2>Output Controls</h2>
+              <p>Select the practical constraints for the generated content.</p>
+            </div>
+          </div>
+          <div class="form-grid compact">
+            <label>
+              Number of variants
+              <select data-other="variantCountOther" name="variantCount">
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="5">5</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="variantCountOther" name="variantCountOther" placeholder="Specify count" inputmode="numeric" />
+            </label>
+            <label>
+              Caption length
+              <select data-other="captionLengthOther" name="captionLength">
+                <option value="Short: 40-70 words">Short: 40-70 words</option>
+                <option value="Medium: 80-130 words">Medium: 80-130 words</option>
+                <option value="Long: 150-220 words">Long: 150-220 words</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="captionLengthOther" name="captionLengthOther" placeholder="Specify length or word count" />
+            </label>
+            <label>
+              Tone
+              <select data-other="toneOther" name="tone">
+                <option value="Clear and helpful">Clear and helpful</option>
+                <option value="Conversational">Conversational</option>
+                <option value="Playful">Playful</option>
+                <option value="Premium">Premium</option>
+                <option value="Urgent">Urgent</option>
+                <option value="Educational">Educational</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="toneOther" name="toneOther" placeholder="Specify tone" />
+            </label>
+            <label>
+              Emoji level
+              <select data-other="emojiOther" name="emojiLevel">
+                <option value="None">None</option>
+                <option value="Light">Light</option>
+                <option value="Moderate">Moderate</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="emojiOther" name="emojiOther" placeholder="Specify emoji direction" />
+            </label>
+            <label>
+              Hashtag count
+              <select data-other="hashtagOther" name="hashtagCount">
+                <option value="0">0</option>
+                <option value="3">3</option>
+                <option value="5">5</option>
+                <option value="8">8</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="hashtagOther" name="hashtagOther" placeholder="Specify hashtag count" inputmode="numeric" />
+            </label>
+            <label>
+              CTA type
+              <select data-other="ctaTypeOther" name="ctaType">
+                <option value="Learn more">Learn more</option>
+                <option value="Comment">Comment</option>
+                <option value="Save">Save</option>
+                <option value="Share">Share</option>
+                <option value="Shop">Shop</option>
+                <option value="Sign up">Sign up</option>
+                <option value="Try it">Try it</option>
+                <option value="Visit site">Visit site</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="ctaTypeOther" name="ctaTypeOther" placeholder="Specify CTA type" />
+            </label>
+          </div>
+          <label class="checkbox-line" id="storyboardToggleWrap">
+            <input type="checkbox" name="storyboardMode" />
+            Generate TikTok storyboard
+          </label>
+          <div class="button-row primary-actions">
+            <button type="submit" id="generateBtn">Generate Content</button>
+            <button type="button" class="secondary" id="resetBtn">Reset</button>
+          </div>
+        </section>
+      </form>
+
+      <section class="panel output-panel" id="generatedContent" hidden>
+        <div class="section-heading">
+          <span class="step">5</span>
+          <div>
+            <h2>Generated Content</h2>
+            <p id="outputSubtitle">Select a version to edit, revise, or export.</p>
+          </div>
+        </div>
+        <div id="variantList" class="variant-list"></div>
+      </section>
+
+      <section class="panel output-panel" id="revisionPanel" hidden>
+        <div class="section-heading">
+          <span class="step">6</span>
+          <div>
+            <h2>Edit Or Revise</h2>
+            <p>Revise the selected caption manually or ask AI using your own instruction.</p>
+          </div>
+        </div>
+        <div class="revision-grid">
+          <label>
+            Manual edit
+            <textarea id="manualCaption" class="large-text"></textarea>
+          </label>
+          <div class="revision-controls">
+            <label>
+              AI revision instruction
+              <textarea id="revisionInstruction" placeholder="Example: Make the hook more specific and reduce the caption by 30%."></textarea>
+            </label>
+            <div class="button-row">
+              <button type="button" class="secondary" id="saveManualBtn">Save Manual Edit</button>
+              <button type="button" id="reviseBtn">Revise With AI</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel output-panel" id="storyboardPanel" hidden>
+        <div class="section-heading">
+          <span class="step">7</span>
+          <div>
+            <h2>TikTok Storyboard</h2>
+            <p>Use the scene plan in Canva, CapCut, Adobe Express, or TikTok.</p>
+          </div>
+        </div>
+        <div id="storyboardOutput"></div>
+      </section>
+
+      <section class="panel output-panel" id="imagePanel" hidden>
+        <div class="section-heading">
+          <span class="step">8</span>
+          <div>
+            <h2>Image Asset</h2>
+            <p>Create a separate image asset with no visible text embedded in the image.</p>
+          </div>
+        </div>
+        <div class="form-grid compact">
+          <label>
+            Number of images
+            <select data-other="imageCountOther" id="imageCount">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="Other">Other</option>
+            </select>
+            <input class="other-input" id="imageCountOther" placeholder="Specify count" inputmode="numeric" />
+          </label>
+          <label>
+            Aspect ratio
+            <select data-other="aspectOther" id="aspectRatio">
+              <option value="1:1">1:1</option>
+              <option value="4:5">4:5</option>
+              <option value="9:16">9:16</option>
+              <option value="16:9">16:9</option>
+              <option value="Other">Other</option>
+            </select>
+            <input class="other-input" id="aspectOther" placeholder="Specify aspect ratio" />
+          </label>
+          <label>
+            Image direction
+            <select data-other="imageDirectionOther" id="imageDirection">
+              <option value="Product photo">Product photo</option>
+              <option value="Lifestyle scene">Lifestyle scene</option>
+              <option value="Problem/solution visual">Problem/solution visual</option>
+              <option value="Behind the scenes">Behind the scenes</option>
+              <option value="Educational visual">Educational visual</option>
+              <option value="Before/after concept">Before/after concept</option>
+              <option value="Other">Other</option>
+            </select>
+            <input class="other-input" id="imageDirectionOther" placeholder="Specify image direction" />
+          </label>
+        </div>
+        <div class="button-row">
+          <button type="button" class="secondary" id="imagePromptBtn">Generate Image Prompts</button>
+          <button type="button" id="imageGenerateBtn">Generate Images</button>
+        </div>
+        <div id="imageOutput" class="image-output"></div>
+      </section>
+
+      <section class="panel output-panel" id="downloadPanel" hidden>
+        <div class="section-heading">
+          <span class="step">9</span>
+          <div>
+            <h2>Downloads</h2>
+            <p>Export the caption, storyboard, image prompts, images, or the full package.</p>
+          </div>
+        </div>
+        <div class="button-row wrap">
+          <button type="button" class="secondary" id="downloadCaptionBtn">Download Caption</button>
+          <button type="button" class="secondary" id="downloadStoryboardBtn">Download Storyboard</button>
+          <button type="button" class="secondary" id="downloadPromptsBtn">Download Image Prompts</button>
+          <button type="button" id="downloadPackageBtn">Download Package</button>
+        </div>
+      </section>
+    </main>
+
+    <template id="variantTemplate">
+      <article class="variant-card">
+        <div class="variant-head">
+          <label class="select-variant">
+            <input type="radio" name="selectedVariant" />
+            <span class="variant-title"></span>
+          </label>
+          <span class="variant-meta"></span>
+        </div>
+        <div class="output-block">
+          <h3>Hook</h3>
+          <p class="variant-hook"></p>
+        </div>
+        <div class="output-block">
+          <h3>Caption</h3>
+          <p class="variant-caption"></p>
+        </div>
+        <div class="output-row">
+          <div class="output-block">
+            <h3>CTA</h3>
+            <p class="variant-cta"></p>
+          </div>
+          <div class="output-block hashtags-block">
+            <h3>Hashtags</h3>
+            <p class="variant-hashtags"></p>
+          </div>
+        </div>
+        <div class="output-block engagement-block">
+          <h3>Engagement Question</h3>
+          <p class="variant-engagement"></p>
+        </div>
+        <div class="output-block">
+          <h3>Image Concept</h3>
+          <p class="variant-image"></p>
+        </div>
+        <div class="output-block">
+          <h3>Teaching Note</h3>
+          <p class="variant-note"></p>
+        </div>
+      </article>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>
