@@ -52,6 +52,22 @@
             </label>
 
             <label>
+              Content format
+              <select data-other="contentFormatOther" name="contentFormat" required>
+                <option value="Testimonial">Testimonial</option>
+                <option value="Demo">Demo</option>
+                <option value="Listicle">Listicle</option>
+                <option value="Montage">Montage</option>
+                <option value="Split screen">Split screen</option>
+                <option value="Behind the scenes">Behind the scenes</option>
+                <option value="Tutorial / How-to">Tutorial / How-to</option>
+                <option value="Unboxing">Unboxing</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="contentFormatOther" name="contentFormatOther" placeholder="Specify content format" />
+            </label>
+
+            <label>
               Awareness stage
               <select data-other="awarenessOther" name="awarenessStage" required>
                 <option value="Unaware">Unaware</option>
@@ -73,22 +89,6 @@
                 <option value="Other">Other</option>
               </select>
               <input class="other-input" id="formatPurposeOther" name="formatPurposeOther" placeholder="Specify purpose" />
-            </label>
-
-            <label>
-              Content format
-              <select data-other="contentFormatOther" name="contentFormat" required>
-                <option value="Testimonial">Testimonial</option>
-                <option value="Demo">Demo</option>
-                <option value="Listicle">Listicle</option>
-                <option value="Montage">Montage</option>
-                <option value="Split screen">Split screen</option>
-                <option value="Behind the scenes">Behind the scenes</option>
-                <option value="Tutorial / How-to">Tutorial / How-to</option>
-                <option value="Unboxing">Unboxing</option>
-                <option value="Other">Other</option>
-              </select>
-              <input class="other-input" id="contentFormatOther" name="contentFormatOther" placeholder="Specify content format" />
             </label>
           </div>
           <div class="format-guidance" id="formatGuidance"></div>
