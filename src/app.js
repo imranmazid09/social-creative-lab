@@ -829,30 +829,37 @@ async function generateStoryboardImagesForCurrent({ force = false } = {}) {
 
   state.storyboardImagesLoading[key] = true;
   delete state.storyboardImageErrors[key];
+  state.storyboardImages[key] = [];
   renderStoryboard();
-  const payload = {
+  const basePayload = {
     mode: "generate",
     form: collectPayload("storyboard-images").form,
     selectedVariant: state.result?.variants?.[state.selectedStoryboardIndex] || selectedVariant() || {},
     settings: {
-      imageCount: prompts.length,
+      imageCount: 1,
       aspectRatio: "9:16",
       imageDirection: "TikTok storyboard scene"
-    },
-    existingPrompts: prompts
+    }
   };
   try {
-    const data = await postJsonStrict("/.netlify/functions/image", payload);
-    if (!data.images?.length) throw new Error("Gemini did not return storyboard images.");
-    state.storyboardImages[key] = (data.images || []).map((image, index) => {
+    const collected = [];
+    for (let index = 0; index < prompts.length; index += 1) {
+      const data = await postJsonStrict("/.netlify/functions/image", {
+        ...basePayload,
+        existingPrompts: [prompts[index]]
+      });
+      const image = data.images?.[0];
+      if (!image) throw new Error(`Scene ${index + 1} image was not returned.`);
       const ext = image.mimeType?.includes("jpeg") ? "jpg" : image.mimeType?.includes("svg") ? "svg" : "png";
-      return {
+      collected.push({
         ...image,
         title: prompts[index]?.title || `Scene ${index + 1}`,
         prompt: prompts[index]?.prompt || "",
         filename: `tiktok-storyboard-${Number(key) + 1}-scene-${index + 1}.${ext}`
-      };
-    });
+      });
+      state.storyboardImages[key] = collected.slice();
+      renderStoryboard();
+    }
     state.storyboardImageSignatures[key] = signature;
   } catch (error) {
     state.storyboardImageErrors[key] = error.message || "Check the Gemini image model and API key.";
