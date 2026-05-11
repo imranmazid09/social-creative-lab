@@ -42,7 +42,10 @@ const state = {
   selectedVariantIndex: 0,
   selectedStoryboardIndex: 0,
   imagePrompts: [],
-  images: []
+  images: [],
+  storyboardImages: {},
+  storyboardImageSignatures: {},
+  storyboardImagesLoading: {}
 };
 
 let storyboardChoiceTouched = false;
@@ -138,19 +141,33 @@ form.addEventListener("submit", async (event) => {
   if (!form.reportValidity()) return;
   await withLoading(generateBtn, async () => {
     const payload = collectPayload("full");
+    const isTikTok = isTikTokPlatform();
     const data = await postJson("/.netlify/functions/generate", payload, () => mockGenerate(payload));
     state.result = normalizeResult(data);
     state.selectedVariantIndex = 0;
     state.selectedStoryboardIndex = 0;
     state.imagePrompts = [];
     state.images = [];
+    state.storyboardImages = {};
+    state.storyboardImageSignatures = {};
+    state.storyboardImagesLoading = {};
     renderGeneratedContent();
     renderStoryboard();
     renderImageOutput();
-    generatedContent.hidden = false;
-    revisionPanel.hidden = false;
-    imagePanel.hidden = !isTikTokPlatform();
+    generatedContent.hidden = isTikTok;
+    revisionPanel.hidden = isTikTok;
+    imagePanel.hidden = isTikTok;
     downloadPanel.hidden = false;
+    syncDownloadControls();
+
+    if (isTikTok) {
+      await generateStoryboardImagesForCurrent();
+      renderStoryboard();
+      setStatus(data.demo ? "Mock TikTok storyboard ready" : "TikTok storyboard ready");
+      storyboardPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
     setStatus(data.demo ? "Mock content ready" : "Content ready");
     generatedContent.scrollIntoView({ behavior: "smooth", block: "start" });
   });
@@ -174,6 +191,9 @@ function resetSession() {
   state.selectedStoryboardIndex = 0;
   state.imagePrompts = [];
   state.images = [];
+  state.storyboardImages = {};
+  state.storyboardImageSignatures = {};
+  state.storyboardImagesLoading = {};
   storyboardChoiceTouched = false;
   storyboardInstruction.value = "";
   imagePromptInstruction.value = "";
@@ -227,9 +247,14 @@ reviseBtn.addEventListener("click", async () => {
 });
 
 saveStoryboardBtn.addEventListener("click", () => {
-  syncStoryboardEdits();
-  renderStoryboard();
-  setStatus("Storyboard edits saved");
+  withLoading(saveStoryboardBtn, async () => {
+    syncStoryboardEdits();
+    clearStoryboardImagesForCurrent();
+    renderStoryboard();
+    await generateStoryboardImagesForCurrent({ force: true });
+    renderStoryboard();
+    setStatus("Storyboard edits saved");
+  });
 });
 
 improveStoryboardBtn.addEventListener("click", async () => {
@@ -257,6 +282,9 @@ improveStoryboardBtn.addEventListener("click", async () => {
     storyboards[state.selectedStoryboardIndex] = data.storyboard || storyboards[state.selectedStoryboardIndex];
     state.result.storyboards = storyboards;
     state.result.storyboard = storyboards[0] || null;
+    clearStoryboardImagesForCurrent();
+    renderStoryboard();
+    await generateStoryboardImagesForCurrent({ force: true });
     renderStoryboard();
     setStatus(data.demo ? "Mock storyboard improvement ready" : "Storyboard improved");
   });
@@ -353,8 +381,9 @@ setStatus("Ready");
 
 function collectPayload(mode) {
   const data = new FormData(form);
+  const platform = choice(data, "platform", "platformOther");
   const formValues = {
-    platform: choice(data, "platform", "platformOther"),
+    platform,
     awarenessStage: choice(data, "awarenessStage", "awarenessOther"),
     formatPurpose: choice(data, "formatPurpose", "formatPurposeOther"),
     contentFormat: choice(data, "contentFormat", "contentFormatOther"),
@@ -371,7 +400,7 @@ function collectPayload(mode) {
     hashtagCount: numberChoice(data, "hashtagCount", "hashtagOther", 0, 12),
     ctaType: choice(data, "ctaType", "ctaTypeOther"),
     engagementQuestion: choice(data, "engagementQuestion", "engagementQuestionOther"),
-    storyboardMode: data.get("storyboardMode") === "on"
+    storyboardMode: platform.toLowerCase().includes("tiktok") || data.get("storyboardMode") === "on"
   };
 
   return {
@@ -597,7 +626,7 @@ function renderStoryboard() {
               <td>${escapeHtml(scene.scene || String(index + 1))}</td>
               <td>${escapeHtml(scene.time || "")}</td>
               <td>${escapeHtml(scene.visual || "")}</td>
-              <td>${escapeHtml(scene.image || "")}</td>
+              <td>${renderStoryboardImageCell(index, scene)}</td>
               <td>${escapeHtml(scene.action || "")}</td>
               <td>${escapeHtml(scene.audio || "")}</td>
               <td>${escapeHtml(scene.onScreenText || "")}</td>
@@ -618,10 +647,39 @@ function renderStoryboard() {
     radio.addEventListener("change", () => {
       syncStoryboardEdits();
       state.selectedStoryboardIndex = Number(radio.dataset.storyboardIndex);
+      state.selectedVariantIndex = state.selectedStoryboardIndex;
       renderStoryboard();
+      generateStoryboardImagesForCurrent()
+        .then(() => renderStoryboard())
+        .catch((error) => {
+          console.error(error);
+          setStatus("Storyboard image generation failed");
+        });
+    });
+  });
+  storyboardOutput.querySelectorAll("[data-download-storyboard-image]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const image = storyboardImagesForCurrent()[Number(button.dataset.downloadStoryboardImage)];
+      if (image?.dataUrl) downloadDataUrl(image.dataUrl, image.filename || "tiktok-storyboard-scene.png");
     });
   });
   renderStoryboardEditor(storyboard);
+}
+
+function renderStoryboardImageCell(index, scene) {
+  const image = storyboardImagesForCurrent()[index];
+  const isLoading = Boolean(state.storyboardImagesLoading[storyboardImageKey()]);
+  if (image?.dataUrl) {
+    return `
+      <figure class="storyboard-image">
+        <img alt="Storyboard scene ${escapeAttribute(scene.scene || String(index + 1))}" src="${image.dataUrl}" />
+        <figcaption>Scene ${escapeHtml(scene.scene || String(index + 1))}</figcaption>
+        <button type="button" class="secondary small-button" data-download-storyboard-image="${index}">Download</button>
+      </figure>
+    `;
+  }
+
+  return `<div class="storyboard-image-placeholder">${isLoading ? "Generating image..." : "Image will appear here."}</div>`;
 }
 
 function renderStoryboardEditor(storyboard) {
@@ -648,7 +706,7 @@ function renderStoryboardEditor(storyboard) {
             <th>Scene</th>
             <th>Time</th>
             <th>Visual</th>
-            <th>Image</th>
+            <th>Image prompt</th>
             <th>Action</th>
             <th>Audio / Voiceover</th>
             <th>On-Screen Text</th>
@@ -690,6 +748,80 @@ function getStoryboards() {
 
 function currentStoryboard() {
   return getStoryboards()[state.selectedStoryboardIndex] || null;
+}
+
+function storyboardImageKey() {
+  return String(state.selectedStoryboardIndex);
+}
+
+function storyboardImagesForCurrent() {
+  return state.storyboardImages[storyboardImageKey()] || [];
+}
+
+function clearStoryboardImagesForCurrent() {
+  const key = storyboardImageKey();
+  delete state.storyboardImages[key];
+  delete state.storyboardImageSignatures[key];
+  delete state.storyboardImagesLoading[key];
+}
+
+function storyboardScenePrompts(storyboard) {
+  return (storyboard?.scenes || []).map((scene, index) => ({
+    title: `Storyboard ${state.selectedStoryboardIndex + 1}, Scene ${scene.scene || index + 1}`,
+    prompt: `Subject: ${scene.image || scene.visual || `Scene ${index + 1}`}.
+Artistic style: realistic vertical TikTok storyboard frame, polished but natural social media photography.
+Details: Scene context: ${scene.visual || ""} Action: ${scene.action || ""} Audio direction: ${scene.audio || ""}.
+Composition: 9:16 vertical frame, clear focal subject, enough context to understand the scene without text.
+Lighting: natural, mobile-first, visually clear.
+Color: balanced and platform-ready.
+Restrictions: no visible text, no words, no typography, no captions, no logos, no labels, no watermarks.`
+  }));
+}
+
+function storyboardPromptSignature(prompts) {
+  return prompts.map((prompt) => prompt.prompt).join("\n---\n");
+}
+
+async function generateStoryboardImagesForCurrent({ force = false } = {}) {
+  if (!isTikTokPlatform()) return;
+  const storyboard = currentStoryboard();
+  if (!storyboard) return;
+
+  const prompts = storyboardScenePrompts(storyboard);
+  if (!prompts.length) return;
+
+  const key = storyboardImageKey();
+  const signature = storyboardPromptSignature(prompts);
+  if (!force && state.storyboardImageSignatures[key] === signature && storyboardImagesForCurrent().length === prompts.length) return;
+
+  state.storyboardImagesLoading[key] = true;
+  renderStoryboard();
+  const payload = {
+    mode: "generate",
+    form: collectPayload("storyboard-images").form,
+    selectedVariant: state.result?.variants?.[state.selectedStoryboardIndex] || selectedVariant() || {},
+    settings: {
+      imageCount: prompts.length,
+      aspectRatio: "9:16",
+      imageDirection: "TikTok storyboard scene"
+    },
+    existingPrompts: prompts
+  };
+  try {
+    const data = await postJson("/.netlify/functions/image", payload, () => mockImage(payload));
+    state.storyboardImages[key] = (data.images || []).map((image, index) => {
+      const ext = image.mimeType?.includes("jpeg") ? "jpg" : image.mimeType?.includes("svg") ? "svg" : "png";
+      return {
+        ...image,
+        title: prompts[index]?.title || `Scene ${index + 1}`,
+        prompt: prompts[index]?.prompt || "",
+        filename: `tiktok-storyboard-${Number(key) + 1}-scene-${index + 1}.${ext}`
+      };
+    });
+    state.storyboardImageSignatures[key] = signature;
+  } finally {
+    state.storyboardImagesLoading[key] = false;
+  }
 }
 
 function syncStoryboardEdits() {
@@ -792,13 +924,20 @@ function selectedVariant() {
 function updateConditionalUi() {
   const isTikTok = isTikTokPlatform();
   storyboardToggleWrap.hidden = !isTikTok;
+  storyboardModeInput.disabled = isTikTok;
   if (isTikTok) {
-    if (!storyboardChoiceTouched) storyboardModeInput.checked = true;
+    storyboardModeInput.checked = true;
     imagePanel.hidden = true;
+    if (state.result) {
+      generatedContent.hidden = true;
+      revisionPanel.hidden = true;
+    }
   } else {
     storyboardModeInput.checked = false;
+    storyboardModeInput.disabled = false;
     storyboardChoiceTouched = false;
   }
+  syncDownloadControls();
 }
 
 function isTikTokPlatform() {
@@ -853,6 +992,12 @@ function showError(message) {
 
 function setStatus(text) {
   newSessionBtn.dataset.status = text;
+}
+
+function syncDownloadControls() {
+  const isTikTok = isTikTokPlatform();
+  downloadCaptionBtn.hidden = isTikTok;
+  downloadPromptsBtn.hidden = isTikTok;
 }
 
 function hashtagsText(hashtags) {
@@ -945,29 +1090,30 @@ function downloadDataUrl(dataUrl, filename) {
 }
 
 async function downloadPackage() {
-  const payload = {
-    form: collectPayload("download").form,
-    selectedVariant: selectedVariant(),
-    storyboard: state.result?.storyboard || null,
-    imagePrompts: state.imagePrompts,
-    images: state.images,
-    exportedAt: new Date().toISOString()
-  };
+  const isTikTok = isTikTokPlatform();
 
   if (!window.JSZip) {
-    downloadText("caption.txt", buildCaptionText(), "text/plain");
+    downloadText(isTikTok ? "storyboard.txt" : "caption.txt", isTikTok ? buildStoryboardText() : buildCaptionText(), "text/plain");
     return;
   }
 
   const zip = new window.JSZip();
-  zip.file("caption.txt", buildCaptionText());
   zip.file("storyboard.txt", buildStoryboardText());
-  zip.file("image-prompts.txt", buildImagePromptsText());
+  if (!isTikTok) {
+    zip.file("caption.txt", buildCaptionText());
+    zip.file("image-prompts.txt", buildImagePromptsText());
+  }
 
   state.images.forEach((image, index) => {
     const base64 = image.dataUrl.split(",")[1];
     const ext = image.mimeType?.includes("jpeg") ? "jpg" : "png";
     zip.file(`image-${index + 1}.${ext}`, base64, { base64: true });
+  });
+
+  storyboardImagesForPackage().forEach(({ image, storyboardIndex, sceneIndex }) => {
+    const base64 = image.dataUrl.split(",")[1];
+    const ext = image.mimeType?.includes("jpeg") ? "jpg" : image.mimeType?.includes("svg") ? "svg" : "png";
+    zip.file(`tiktok-storyboard-${storyboardIndex + 1}-scene-${sceneIndex + 1}.${ext}`, base64, { base64: true });
   });
 
   const blob = await zip.generateAsync({ type: "blob" });
@@ -977,6 +1123,16 @@ async function downloadPackage() {
   link.download = "social-creative-lab-package.zip";
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function storyboardImagesForPackage() {
+  return Object.entries(state.storyboardImages).flatMap(([storyboardIndex, images]) =>
+    (images || []).map((image, sceneIndex) => ({
+      image,
+      storyboardIndex: Number(storyboardIndex),
+      sceneIndex
+    }))
+  );
 }
 
 function mockGenerate(payload) {

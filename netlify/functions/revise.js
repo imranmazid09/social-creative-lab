@@ -140,7 +140,7 @@ Return only valid JSON matching:
         "scene": "1",
         "time": "0-3s",
         "visual": "what viewer sees",
-        "image": "reference image description for this scene, no visible text",
+        "image": "detailed image-generation prompt for this scene, no visible text",
         "action": "what happens",
         "audio": "voiceover or sound cue",
         "onScreenText": "text overlay suggestion only, not for generated image",
@@ -176,7 +176,7 @@ Rules:
 - Keep the storyboard useful for TikTok and easy to build in Canva or CapCut.
 - Make the revision reflect the student's instruction clearly.
 - Include an image field for every scene.
-- Image fields should describe scene reference images only: no visible text, no typography, no labels, no logos, no watermarks.
+- Image fields should work as detailed image-generation prompts for scene reference images only: include subject, style, details, composition, lighting, color, and restrictions; no visible text, no typography, no labels, no logos, no watermarks.
 - Do not invent proof, statistics, endorsements, guarantees, or product facts.
 - On-screen text is only a separate editing suggestion and must not be placed inside generated images.`;
 }

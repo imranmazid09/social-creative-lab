@@ -33,28 +33,32 @@ export async function handler(event) {
         mockImagePrompts(payload.form || {}, payload.selectedVariant || {}, payload.settings || {});
 
     const ai = getAiClient();
-    const images = [];
     const imageModel = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
 
-    for (const [index, item] of prompts.entries()) {
-      const response = await ai.models.generateContent({
-        model: imageModel,
-        contents: buildImagePrompt(item.prompt, payload),
-        config: buildImageConfig(payload)
-      });
+    const images = (
+      await Promise.all(
+        prompts.map(async (item, index) => {
+          const response = await ai.models.generateContent({
+            model: imageModel,
+            contents: buildImagePrompt(item.prompt, payload),
+            config: buildImageConfig(payload)
+          });
 
-      const parts = response.candidates?.[0]?.content?.parts || [];
-      const imagePart = parts.find((part) => part.inlineData?.data);
-      if (imagePart?.inlineData?.data) {
-        const mimeType = imagePart.inlineData.mimeType || "image/png";
-        const ext = mimeType.includes("jpeg") ? "jpg" : "png";
-        images.push({
-          filename: `social-image-${index + 1}.${ext}`,
-          mimeType,
-          dataUrl: `data:${mimeType};base64,${imagePart.inlineData.data}`
-        });
-      }
-    }
+          const parts = response.candidates?.[0]?.content?.parts || [];
+          const imagePart = parts.find((part) => part.inlineData?.data);
+          if (imagePart?.inlineData?.data) {
+            const mimeType = imagePart.inlineData.mimeType || "image/png";
+            const ext = mimeType.includes("jpeg") ? "jpg" : "png";
+            return {
+              filename: `social-image-${index + 1}.${ext}`,
+              mimeType,
+              dataUrl: `data:${mimeType};base64,${imagePart.inlineData.data}`
+            };
+          }
+          return null;
+        })
+      )
+    ).filter(Boolean);
 
     return jsonResponse({
       demo: false,
