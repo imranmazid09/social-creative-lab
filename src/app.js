@@ -1042,6 +1042,14 @@ function showError(message) {
   const error = document.createElement("div");
   error.className = "notice error";
   error.textContent = message;
+  if (isTikTokPlatform()) {
+    generatedContent.hidden = true;
+    revisionPanel.hidden = true;
+    imagePanel.hidden = true;
+    storyboardPanel.hidden = false;
+    storyboardOutput.prepend(error);
+    return;
+  }
   generatedContent.hidden = false;
   variantList.prepend(error);
 }

@@ -36,35 +36,16 @@ export async function handler(event) {
         mockImagePrompts(payload.form || {}, payload.selectedVariant || {}, payload.settings || {});
 
     const ai = getAiClient();
-    const imageModel = process.env.GEMINI_IMAGE_MODEL || "gemini-3-pro-image-preview";
+    const imageModels = uniqueModels([process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image-preview", "gemini-2.5-flash-image"]);
+    const images = [];
 
-    const images = (
-      await Promise.all(
-        prompts.map(async (item, index) => {
-          const response = await ai.models.generateContent({
-            model: imageModel,
-            contents: buildImagePrompt(item.prompt, payload),
-            config: buildImageConfig(payload)
-          });
-
-          const parts = response.candidates?.[0]?.content?.parts || [];
-          const imagePart = parts.find((part) => part.inlineData?.data);
-          if (imagePart?.inlineData?.data) {
-            const mimeType = imagePart.inlineData.mimeType || "image/png";
-            const ext = mimeType.includes("jpeg") ? "jpg" : "png";
-            return {
-              filename: `social-image-${index + 1}.${ext}`,
-              mimeType,
-              dataUrl: `data:${mimeType};base64,${imagePart.inlineData.data}`
-            };
-          }
-          return null;
-        })
-      )
-    ).filter(Boolean);
+    for (const [index, item] of prompts.entries()) {
+      const image = await generateImageWithFallback(ai, imageModels, item, index, payload);
+      images.push(image);
+    }
 
     if (!images.length) {
-      return jsonResponse({ error: `No image data returned from ${imageModel}. Check GEMINI_IMAGE_MODEL or remove it to use the default image model.` }, 502);
+      return jsonResponse({ error: `No image data returned from ${imageModels.join(" or ")}. Check GEMINI_IMAGE_MODEL or remove it to use the default image model.` }, 502);
     }
 
     return jsonResponse({
@@ -75,6 +56,39 @@ export async function handler(event) {
   } catch (error) {
     return jsonResponse({ error: error.message || "Image generation failed" }, error.statusCode || 500);
   }
+}
+
+async function generateImageWithFallback(ai, imageModels, item, index, payload) {
+  const errors = [];
+  for (const model of imageModels) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: buildImagePrompt(item.prompt, payload),
+        config: buildImageConfig(payload)
+      });
+
+      const parts = response.candidates?.[0]?.content?.parts || [];
+      const imagePart = parts.find((part) => part.inlineData?.data);
+      if (imagePart?.inlineData?.data) {
+        const mimeType = imagePart.inlineData.mimeType || "image/png";
+        const ext = mimeType.includes("jpeg") ? "jpg" : "png";
+        return {
+          filename: `social-image-${index + 1}.${ext}`,
+          mimeType,
+          dataUrl: `data:${mimeType};base64,${imagePart.inlineData.data}`
+        };
+      }
+      errors.push(`${model}: no image returned`);
+    } catch (error) {
+      errors.push(`${model}: ${error.message || "image request failed"}`);
+    }
+  }
+  throw Object.assign(new Error(`Scene ${index + 1} image failed. ${errors.join(" | ")}`), { statusCode: 502 });
+}
+
+function uniqueModels(models) {
+  return [...new Set(models.map((model) => String(model || "").trim()).filter(Boolean))];
 }
 
 function buildPromptGenerationPrompt(payload) {
