@@ -30,8 +30,6 @@ const downloadPromptsBtn = document.querySelector("#downloadPromptsBtn");
 const downloadPackageBtn = document.querySelector("#downloadPackageBtn");
 const formatGuidance = document.querySelector("#formatGuidance");
 
-const STORAGE_KEY = "socialCreativeLabDraft";
-
 const state = {
   hooks: [],
   selectedHook: "",
@@ -102,16 +100,13 @@ document.querySelectorAll("[data-other]").forEach((select) => {
   };
   select.addEventListener("change", () => {
     sync();
-    persistDraft();
     updateConditionalUi();
   });
   sync();
 });
 
-form.addEventListener("input", persistDraft);
 form.addEventListener("change", () => {
   updateFormatGuidance();
-  persistDraft();
 });
 
 generateHooksBtn.addEventListener("click", async () => {
@@ -150,7 +145,7 @@ form.addEventListener("submit", async (event) => {
 
 resetBtn.addEventListener("click", () => {
   form.reset();
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem("socialCreativeLabDraft");
   state.hooks = [];
   state.selectedHook = "";
   state.result = null;
@@ -290,9 +285,10 @@ downloadPromptsBtn.addEventListener("click", () => {
 
 downloadPackageBtn.addEventListener("click", downloadPackage);
 
-restoreDraft();
+localStorage.removeItem("socialCreativeLabDraft");
 updateConditionalUi();
 updateFormatGuidance();
+setStatus("Ready");
 
 function collectPayload(mode) {
   const data = new FormData(form);
@@ -671,38 +667,6 @@ function showError(message) {
 
 function setStatus(text) {
   saveStatus.textContent = text;
-}
-
-function persistDraft() {
-  const payload = {};
-  new FormData(form).forEach((fieldValue, key) => {
-    payload[key] = fieldValue;
-  });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  setStatus("Draft saved");
-}
-
-function restoreDraft() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return;
-  try {
-    const payload = JSON.parse(raw);
-    Object.entries(payload).forEach(([key, fieldValue]) => {
-      const field = form.elements[key];
-      if (!field) return;
-      if (field.type === "checkbox") {
-        field.checked = fieldValue === "on" || fieldValue === true;
-      } else {
-        field.value = fieldValue;
-      }
-    });
-    document.querySelectorAll("[data-other]").forEach((select) => {
-      select.dispatchEvent(new Event("change"));
-    });
-    setStatus("Draft restored");
-  } catch {
-    localStorage.removeItem(STORAGE_KEY);
-  }
 }
 
 function hashtagsText(hashtags) {
