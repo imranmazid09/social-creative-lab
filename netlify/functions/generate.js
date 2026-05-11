@@ -83,6 +83,7 @@ If storyboard is requested, return both storyboard and storyboards. Storyboards 
   "recommendedLength": "15s, 30s, or 45s",
   "pacing": "pacing description",
   "audioStyle": "audio or voiceover style",
+  "characterBible": "concrete visual description of the recurring cast that must stay consistent across every scene: each person's apparent age, gender, ethnicity, hair (length, color, style), body type, wardrobe (specific garments and colors), and any defining accessories. Include family composition if more than one person appears. Use the same cast wording in every scene's image field.",
   "scenes": [
     {
       "scene": "1",
@@ -124,6 +125,7 @@ Platform requirements:
 - TikTok: include 3-second hook as hook, caption, hashtags, CTA, visual concept, and storyboard if requested.
 - For TikTok storyboard mode: create ${form.variantCount || 2} distinct storyboard variations that reflect the output controls, content format, hook type, caption length, tone, and CTA type.
 - Storyboard scenes must include an image field that works as a detailed image-generation prompt for the associated scene image. It should include subject, style, details, composition, lighting, color, and restrictions. Images must be clean visual references with no text, typography, labels, logos, or watermarks.
+- Every scene's image field MUST restate the same cast described in characterBible (same faces, hair, build, wardrobe, family composition). Do not vary the people between scenes — only the action, setting, framing, and lighting change.
 - Generate engagementQuestion only when Engagement question setting is not "No". If it is "No", return an empty string.
 
 Content rules:

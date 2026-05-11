@@ -799,9 +799,13 @@ function clearStoryboardImagesForCurrent() {
 }
 
 function storyboardScenePrompts(storyboard) {
+  const bible = (storyboard?.characterBible || "").trim();
+  const biblePrefix = bible
+    ? `Recurring cast (must stay identical across every scene): ${bible}\n\n`
+    : "";
   return (storyboard?.scenes || []).map((scene, index) => ({
     title: `Storyboard ${state.selectedStoryboardIndex + 1}, Scene ${scene.scene || index + 1}`,
-    prompt: `Subject: ${scene.image || scene.visual || `Scene ${index + 1}`}.
+    prompt: `${biblePrefix}Subject: ${scene.image || scene.visual || `Scene ${index + 1}`}.
 Artistic style: realistic vertical TikTok storyboard frame, polished but natural social media photography.
 Details: Scene context: ${scene.visual || ""} Action: ${scene.action || ""} Audio direction: ${scene.audio || ""}.
 Composition: 9:16 vertical frame, clear focal subject, enough context to understand the scene without text.
@@ -809,6 +813,13 @@ Lighting: natural, mobile-first, visually clear.
 Color: balanced and platform-ready.
 Restrictions: no visible text, no words, no typography, no captions, no logos, no labels, no watermarks.`
   }));
+}
+
+function referenceImageFromDataUrl(dataUrl) {
+  const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl || "");
+  if (!match) return null;
+  if (match[1].includes("svg")) return null;
+  return { mimeType: match[1], data: match[2] };
 }
 
 function storyboardPromptSignature(prompts) {
@@ -843,10 +854,13 @@ async function generateStoryboardImagesForCurrent({ force = false } = {}) {
   };
   try {
     const collected = [];
+    let referenceImage = null;
     for (let index = 0; index < prompts.length; index += 1) {
       const data = await postJsonStrict("/.netlify/functions/image", {
         ...basePayload,
-        existingPrompts: [prompts[index]]
+        existingPrompts: [prompts[index]],
+        castContinuity: index === 0,
+        referenceImage: index === 0 ? null : referenceImage
       });
       const image = data.images?.[0];
       if (!image) throw new Error(`Scene ${index + 1} image was not returned.`);
@@ -857,6 +871,7 @@ async function generateStoryboardImagesForCurrent({ force = false } = {}) {
         prompt: prompts[index]?.prompt || "",
         filename: `tiktok-storyboard-${Number(key) + 1}-scene-${index + 1}.${ext}`
       });
+      if (index === 0) referenceImage = referenceImageFromDataUrl(image.dataUrl);
       state.storyboardImages[key] = collected.slice();
       renderStoryboard();
     }

@@ -142,6 +142,7 @@ export function mockStoryboard(form, index = 0, variant = null) {
     recommendedLength: "18 seconds",
     pacing: index % 2 === 0 ? "Fast cuts with one clear benefit moment" : "Slower problem-to-solution sequence with a clear final payoff",
     audioStyle: index % 2 === 0 ? "Voiceover with natural product sound underneath" : "Conversational voiceover with light background music",
+    characterBible: `Recurring cast (keep identical across all scenes): ${form.audience || "the audience"} — same face, hair, build, wardrobe, and family composition in every shot.`,
     scenes: [
       {
         scene: "1",

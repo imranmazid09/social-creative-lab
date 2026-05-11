@@ -64,7 +64,7 @@ async function generateImageWithFallback(ai, imageModels, item, index, payload) 
     try {
       const response = await ai.models.generateContent({
         model,
-        contents: buildImagePrompt(item.prompt, payload),
+        contents: buildImageContents(item.prompt, payload),
         config: buildImageConfig(payload)
       });
 
@@ -199,10 +199,29 @@ function imageDirectionInstruction(direction, form) {
 
 function buildImagePrompt(basePrompt, payload) {
   const settings = payload.settings || {};
+  const continuity = payload.referenceImage?.data
+    ? `
+Character continuity: The attached reference image shows the cast. Use the exact same people in this scene — same faces, hair, skin tone, ethnicity, body type, wardrobe, and family composition. Only the action, setting, framing, and lighting change.`
+    : payload.castContinuity
+      ? `
+Character continuity: This image establishes the cast for a multi-scene storyboard. Render the people with specific, memorable features (clear face shapes, hair, wardrobe, body type) so the same individuals can be reproduced in later scenes.`
+      : "";
   return `${basePrompt}
 
 Aspect ratio: ${settings.aspectRatio || "1:1"}.
-Important: no visible text, no captions, no words, no typography, no logos, no labels, no watermarks.`;
+Important: no visible text, no captions, no words, no typography, no logos, no labels, no watermarks.${continuity}`;
+}
+
+function buildImageContents(basePrompt, payload) {
+  const text = buildImagePrompt(basePrompt, payload);
+  const reference = payload.referenceImage;
+  if (reference?.data) {
+    return [
+      { text },
+      { inlineData: { mimeType: reference.mimeType || "image/png", data: reference.data } }
+    ];
+  }
+  return text;
 }
 
 function buildImageConfig(payload) {
