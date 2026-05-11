@@ -322,11 +322,14 @@
 
       <section class="panel output-panel" id="imagePanel" hidden>
         <div class="section-heading">
-          <span class="step">7</span>
-          <div>
-            <h2>Image Asset</h2>
-            <p>Create a separate image asset with no visible text embedded in the image.</p>
+          <div class="heading-main">
+            <span class="step">7</span>
+            <div>
+              <h2>Image Asset</h2>
+              <p>Create a separate image asset with no visible text embedded in the image.</p>
+            </div>
           </div>
+          <button type="button" class="secondary" id="resetImageBtn">Reset Image Asset</button>
         </div>
         <div class="form-grid compact">
           <label>
@@ -366,17 +369,25 @@
         </div>
         <div class="button-row">
           <button type="button" class="secondary" id="imagePromptBtn">Generate Image Prompts</button>
-          <button type="button" class="secondary" id="savePromptsBtn">Save Prompt Edits</button>
-          <button type="button" class="secondary" id="improvePromptsBtn">Improve Prompts With AI</button>
-          <button type="button" class="secondary" id="resetImageBtn">Reset Image Asset</button>
           <button type="button" id="imageGenerateBtn">Generate Images</button>
         </div>
         <div id="imageSettingsNotice" class="notice" hidden>Image settings changed. Regenerate image prompts or reset this section before generating new images.</div>
-        <label class="prompt-improve">
-          Image prompt improvement instruction
-          <textarea id="imagePromptInstruction" placeholder="Example: Make the subject more specific, use softer lighting, and avoid anything that looks like a stock photo."></textarea>
-        </label>
-        <div id="imageOutput" class="image-output"></div>
+        <div class="revision-grid image-prompt-grid">
+          <label>
+            Manual prompt edit
+            <div id="imageOutput" class="image-output"></div>
+          </label>
+          <div class="revision-controls">
+            <label class="prompt-improve">
+              AI prompt improvement instruction
+              <textarea id="imagePromptInstruction" placeholder="Example: Make the subject more specific, use softer lighting, and avoid anything that looks like a stock photo."></textarea>
+            </label>
+            <div class="button-row">
+              <button type="button" class="secondary" id="savePromptsBtn">Save Prompt Edits</button>
+              <button type="button" id="improvePromptsBtn">Improve Prompts With AI</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="panel output-panel" id="downloadPanel" hidden>

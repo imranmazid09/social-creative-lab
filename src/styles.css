@@ -190,6 +190,13 @@ h3 {
   align-items: flex-start;
   display: flex;
   gap: 0.82rem;
+  justify-content: space-between;
+}
+
+.heading-main {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.82rem;
 }
 
 .section-heading p {
@@ -472,6 +479,10 @@ th {
   gap: 14px;
 }
 
+.image-prompt-grid {
+  align-items: start;
+}
+
 .prompt-card {
   background: #fbfcfb;
   border: 1px solid var(--line);
@@ -559,6 +570,10 @@ th {
   }
 
   .variant-head {
+    flex-direction: column;
+  }
+
+  .section-heading {
     flex-direction: column;
   }
 }
