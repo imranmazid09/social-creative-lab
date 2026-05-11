@@ -6,6 +6,9 @@ export async function handler(event) {
     const fallback = mockImageResponse(payload);
 
     if (!process.env.GEMINI_API_KEY) {
+      if (payload.mode === "generate") {
+        return jsonResponse({ error: "GEMINI_API_KEY is missing. Add it in Netlify environment variables to generate images." }, 500);
+      }
       return jsonResponse(fallback);
     }
 
@@ -33,7 +36,7 @@ export async function handler(event) {
         mockImagePrompts(payload.form || {}, payload.selectedVariant || {}, payload.settings || {});
 
     const ai = getAiClient();
-    const imageModel = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
+    const imageModel = process.env.GEMINI_IMAGE_MODEL || "gemini-3-pro-image-preview";
 
     const images = (
       await Promise.all(
@@ -59,6 +62,10 @@ export async function handler(event) {
         })
       )
     ).filter(Boolean);
+
+    if (!images.length) {
+      return jsonResponse({ error: `No image data returned from ${imageModel}. Check GEMINI_IMAGE_MODEL or remove it to use the default image model.` }, 502);
+    }
 
     return jsonResponse({
       demo: false,

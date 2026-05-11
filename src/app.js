@@ -45,7 +45,8 @@ const state = {
   images: [],
   storyboardImages: {},
   storyboardImageSignatures: {},
-  storyboardImagesLoading: {}
+  storyboardImagesLoading: {},
+  storyboardImageErrors: {}
 };
 
 let storyboardChoiceTouched = false;
@@ -151,6 +152,7 @@ form.addEventListener("submit", async (event) => {
     state.storyboardImages = {};
     state.storyboardImageSignatures = {};
     state.storyboardImagesLoading = {};
+    state.storyboardImageErrors = {};
     renderGeneratedContent();
     renderStoryboard();
     renderImageOutput();
@@ -194,6 +196,7 @@ function resetSession() {
   state.storyboardImages = {};
   state.storyboardImageSignatures = {};
   state.storyboardImagesLoading = {};
+  state.storyboardImageErrors = {};
   storyboardChoiceTouched = false;
   storyboardInstruction.value = "";
   imagePromptInstruction.value = "";
@@ -341,12 +344,12 @@ imageGenerateBtn.addEventListener("click", async () => {
   syncPromptEdits();
   await withLoading(imageGenerateBtn, async () => {
     const payload = collectImagePayload("generate");
-    const data = await postJson("/.netlify/functions/image", payload, () => mockImage(payload));
+    const data = await postJsonStrict("/.netlify/functions/image", payload);
     state.imagePrompts = data.imagePrompts || state.imagePrompts;
     state.images = data.images || [];
     markImageSettingsDirty(false);
     renderImageOutput();
-    setStatus(data.demo ? "Mock image previews ready" : "Images ready");
+    setStatus("Images ready");
   });
 });
 
@@ -507,6 +510,17 @@ async function postJson(url, payload, fallbackFactory) {
     console.warn(error);
     return fallbackFactory();
   }
+}
+
+async function postJsonStrict(url, payload) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
+  return data;
 }
 
 function normalizeResult(data) {
@@ -680,7 +694,9 @@ function renderStoryboard() {
 
 function renderStoryboardImageCell(index, scene) {
   const image = storyboardImagesForCurrent()[index];
-  const isLoading = Boolean(state.storyboardImagesLoading[storyboardImageKey()]);
+  const key = storyboardImageKey();
+  const isLoading = Boolean(state.storyboardImagesLoading[key]);
+  const error = state.storyboardImageErrors[key];
   if (image?.dataUrl) {
     return `
       <figure class="storyboard-image">
@@ -689,6 +705,10 @@ function renderStoryboardImageCell(index, scene) {
         <button type="button" class="secondary small-button" data-download-storyboard-image="${index}">Download</button>
       </figure>
     `;
+  }
+
+  if (error) {
+    return `<div class="storyboard-image-placeholder error">Image generation failed. ${escapeHtml(error)}</div>`;
   }
 
   return `<div class="storyboard-image-placeholder">${isLoading ? "Generating image..." : "Image will appear here."}</div>`;
@@ -775,6 +795,7 @@ function clearStoryboardImagesForCurrent() {
   delete state.storyboardImages[key];
   delete state.storyboardImageSignatures[key];
   delete state.storyboardImagesLoading[key];
+  delete state.storyboardImageErrors[key];
 }
 
 function storyboardScenePrompts(storyboard) {
@@ -807,6 +828,7 @@ async function generateStoryboardImagesForCurrent({ force = false } = {}) {
   if (!force && state.storyboardImageSignatures[key] === signature && storyboardImagesForCurrent().length === prompts.length) return;
 
   state.storyboardImagesLoading[key] = true;
+  delete state.storyboardImageErrors[key];
   renderStoryboard();
   const payload = {
     mode: "generate",
@@ -820,7 +842,8 @@ async function generateStoryboardImagesForCurrent({ force = false } = {}) {
     existingPrompts: prompts
   };
   try {
-    const data = await postJson("/.netlify/functions/image", payload, () => mockImage(payload));
+    const data = await postJsonStrict("/.netlify/functions/image", payload);
+    if (!data.images?.length) throw new Error("Gemini did not return storyboard images.");
     state.storyboardImages[key] = (data.images || []).map((image, index) => {
       const ext = image.mimeType?.includes("jpeg") ? "jpg" : image.mimeType?.includes("svg") ? "svg" : "png";
       return {
@@ -831,8 +854,12 @@ async function generateStoryboardImagesForCurrent({ force = false } = {}) {
       };
     });
     state.storyboardImageSignatures[key] = signature;
+  } catch (error) {
+    state.storyboardImageErrors[key] = error.message || "Check the Gemini image model and API key.";
+    throw error;
   } finally {
     state.storyboardImagesLoading[key] = false;
+    renderStoryboard();
   }
 }
 

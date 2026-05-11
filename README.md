@@ -25,7 +25,7 @@ A classroom tool for helping students create platform-native social media conten
 ```txt
 GEMINI_API_KEY=your_api_key_here
 GEMINI_MODEL=gemini-3-flash-preview
-GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
+GEMINI_IMAGE_MODEL=gemini-3-pro-image-preview
 ```
 
 4. Use the included `netlify.toml`. There is no frontend build step.
