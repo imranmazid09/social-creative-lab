@@ -13,7 +13,12 @@ const reviseBtn = document.querySelector("#reviseBtn");
 const saveManualBtn = document.querySelector("#saveManualBtn");
 const storyboardPanel = document.querySelector("#storyboardPanel");
 const storyboardOutput = document.querySelector("#storyboardOutput");
+const storyboardEditor = document.querySelector("#storyboardEditor");
 const storyboardToggleWrap = document.querySelector("#storyboardToggleWrap");
+const storyboardModeInput = document.querySelector("[name='storyboardMode']");
+const storyboardInstruction = document.querySelector("#storyboardInstruction");
+const saveStoryboardBtn = document.querySelector("#saveStoryboardBtn");
+const improveStoryboardBtn = document.querySelector("#improveStoryboardBtn");
 const imagePanel = document.querySelector("#imagePanel");
 const imagePromptBtn = document.querySelector("#imagePromptBtn");
 const imageGenerateBtn = document.querySelector("#imageGenerateBtn");
@@ -35,9 +40,12 @@ const state = {
   selectedHook: "",
   result: null,
   selectedVariantIndex: 0,
+  selectedStoryboardIndex: 0,
   imagePrompts: [],
   images: []
 };
+
+let storyboardChoiceTouched = false;
 
 const formatNotes = {
   Testimonial: {
@@ -109,6 +117,10 @@ form.addEventListener("change", () => {
   updateFormatGuidance();
 });
 
+storyboardModeInput.addEventListener("change", () => {
+  storyboardChoiceTouched = true;
+});
+
 generateHooksBtn.addEventListener("click", async () => {
   if (!validateHookPrereqs()) return;
   await withLoading(generateHooksBtn, async () => {
@@ -129,6 +141,7 @@ form.addEventListener("submit", async (event) => {
     const data = await postJson("/.netlify/functions/generate", payload, () => mockGenerate(payload));
     state.result = normalizeResult(data);
     state.selectedVariantIndex = 0;
+    state.selectedStoryboardIndex = 0;
     state.imagePrompts = [];
     state.images = [];
     renderGeneratedContent();
@@ -136,7 +149,7 @@ form.addEventListener("submit", async (event) => {
     renderImageOutput();
     generatedContent.hidden = false;
     revisionPanel.hidden = false;
-    imagePanel.hidden = false;
+    imagePanel.hidden = !isTikTokPlatform();
     downloadPanel.hidden = false;
     setStatus(data.demo ? "Mock content ready" : "Content ready");
     generatedContent.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -158,8 +171,11 @@ function resetSession() {
   state.selectedHook = "";
   state.result = null;
   state.selectedVariantIndex = 0;
+  state.selectedStoryboardIndex = 0;
   state.imagePrompts = [];
   state.images = [];
+  storyboardChoiceTouched = false;
+  storyboardInstruction.value = "";
   imagePromptInstruction.value = "";
   hookOptions.innerHTML = "";
   [generatedContent, revisionPanel, storyboardPanel, imagePanel, downloadPanel].forEach((el) => {
@@ -207,6 +223,42 @@ reviseBtn.addEventListener("click", async () => {
     manualCaption.value = state.result.variants[state.selectedVariantIndex].caption || "";
     renderGeneratedContent();
     setStatus(data.demo ? "Mock revision ready" : "Revision ready");
+  });
+});
+
+saveStoryboardBtn.addEventListener("click", () => {
+  syncStoryboardEdits();
+  renderStoryboard();
+  setStatus("Storyboard edits saved");
+});
+
+improveStoryboardBtn.addEventListener("click", async () => {
+  const storyboard = currentStoryboard();
+  const instruction = storyboardInstruction.value.trim();
+  if (!storyboard) {
+    setStatus("Generate storyboard first");
+    return;
+  }
+  if (!instruction) {
+    storyboardInstruction.focus();
+    setStatus("Add storyboard instruction");
+    return;
+  }
+  syncStoryboardEdits();
+  await withLoading(improveStoryboardBtn, async () => {
+    const payload = {
+      mode: "storyboard",
+      form: collectPayload("storyboard").form,
+      storyboard: currentStoryboard(),
+      instruction
+    };
+    const data = await postJson("/.netlify/functions/revise", payload, () => mockStoryboardRevise(payload));
+    const storyboards = getStoryboards();
+    storyboards[state.selectedStoryboardIndex] = data.storyboard || storyboards[state.selectedStoryboardIndex];
+    state.result.storyboards = storyboards;
+    state.result.storyboard = storyboards[0] || null;
+    renderStoryboard();
+    setStatus(data.demo ? "Mock storyboard improvement ready" : "Storyboard improved");
   });
 });
 
@@ -417,10 +469,12 @@ async function postJson(url, payload, fallbackFactory) {
 }
 
 function normalizeResult(data) {
+  const storyboards = data.storyboards || (data.storyboard ? [data.storyboard] : []);
   return {
     hooks: data.hooks || [],
     variants: data.variants || [],
-    storyboard: data.storyboard || null,
+    storyboard: storyboards[0] || null,
+    storyboards,
     imagePrompts: data.imagePrompts || []
   };
 }
@@ -490,15 +544,32 @@ function renderGeneratedContent() {
 }
 
 function renderStoryboard() {
-  const storyboard = state.result?.storyboard;
+  const storyboards = getStoryboards();
+  const storyboard = currentStoryboard();
   if (!storyboard) {
     storyboardPanel.hidden = true;
     storyboardOutput.innerHTML = "";
+    storyboardEditor.innerHTML = "";
     return;
   }
   storyboardPanel.hidden = false;
   const scenes = storyboard.scenes || [];
   storyboardOutput.innerHTML = `
+    ${
+      storyboards.length > 1
+        ? `<div class="storyboard-options">
+          ${storyboards
+            .map(
+              (item, index) => `
+              <label class="storyboard-option">
+                <input type="radio" name="selectedStoryboard" data-storyboard-index="${index}" ${index === state.selectedStoryboardIndex ? "checked" : ""} />
+                ${escapeHtml(item.title || `Storyboard ${index + 1}`)}
+              </label>`
+            )
+            .join("")}
+        </div>`
+        : ""
+    }
     <div class="storyboard-meta">
       <div><h3>Length</h3><p>${escapeHtml(storyboard.recommendedLength || "")}</p></div>
       <div><h3>Pacing</h3><p>${escapeHtml(storyboard.pacing || "")}</p></div>
@@ -511,6 +582,7 @@ function renderStoryboard() {
             <th>Scene</th>
             <th>Time</th>
             <th>Visual</th>
+            <th>Image</th>
             <th>Action</th>
             <th>Audio / Voiceover</th>
             <th>On-Screen Text</th>
@@ -525,6 +597,7 @@ function renderStoryboard() {
               <td>${escapeHtml(scene.scene || String(index + 1))}</td>
               <td>${escapeHtml(scene.time || "")}</td>
               <td>${escapeHtml(scene.visual || "")}</td>
+              <td>${escapeHtml(scene.image || "")}</td>
               <td>${escapeHtml(scene.action || "")}</td>
               <td>${escapeHtml(scene.audio || "")}</td>
               <td>${escapeHtml(scene.onScreenText || "")}</td>
@@ -541,6 +614,104 @@ function renderStoryboard() {
       <p>${escapeHtml(storyboard.buildNotes || "")}</p>
     </div>
   `;
+  storyboardOutput.querySelectorAll("[data-storyboard-index]").forEach((radio) => {
+    radio.addEventListener("change", () => {
+      syncStoryboardEdits();
+      state.selectedStoryboardIndex = Number(radio.dataset.storyboardIndex);
+      renderStoryboard();
+    });
+  });
+  renderStoryboardEditor(storyboard);
+}
+
+function renderStoryboardEditor(storyboard) {
+  const scenes = storyboard.scenes || [];
+  storyboardEditor.innerHTML = `
+    <div class="form-grid compact">
+      <label>
+        Recommended length
+        <input data-storyboard-field="recommendedLength" value="${escapeAttribute(storyboard.recommendedLength || "")}" />
+      </label>
+      <label>
+        Pacing
+        <input data-storyboard-field="pacing" value="${escapeAttribute(storyboard.pacing || "")}" />
+      </label>
+      <label>
+        Audio style
+        <input data-storyboard-field="audioStyle" value="${escapeAttribute(storyboard.audioStyle || "")}" />
+      </label>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Scene</th>
+            <th>Time</th>
+            <th>Visual</th>
+            <th>Image</th>
+            <th>Action</th>
+            <th>Audio / Voiceover</th>
+            <th>On-Screen Text</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${scenes
+            .map(
+              (scene, index) => `
+            <tr>
+              <td><input data-scene-index="${index}" data-scene-field="scene" value="${escapeAttribute(scene.scene || String(index + 1))}" /></td>
+              <td><textarea data-scene-index="${index}" data-scene-field="time">${escapeHtml(scene.time || "")}</textarea></td>
+              <td><textarea data-scene-index="${index}" data-scene-field="visual">${escapeHtml(scene.visual || "")}</textarea></td>
+              <td><textarea data-scene-index="${index}" data-scene-field="image">${escapeHtml(scene.image || "")}</textarea></td>
+              <td><textarea data-scene-index="${index}" data-scene-field="action">${escapeHtml(scene.action || "")}</textarea></td>
+              <td><textarea data-scene-index="${index}" data-scene-field="audio">${escapeHtml(scene.audio || "")}</textarea></td>
+              <td><textarea data-scene-index="${index}" data-scene-field="onScreenText">${escapeHtml(scene.onScreenText || "")}</textarea></td>
+              <td><textarea data-scene-index="${index}" data-scene-field="purpose">${escapeHtml(scene.purpose || "")}</textarea></td>
+            </tr>
+          `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+    <label>
+      Build Notes
+      <textarea data-storyboard-field="buildNotes">${escapeHtml(storyboard.buildNotes || "")}</textarea>
+    </label>
+  `;
+}
+
+function getStoryboards() {
+  if (!state.result) return [];
+  if (Array.isArray(state.result.storyboards) && state.result.storyboards.length) return state.result.storyboards;
+  return state.result.storyboard ? [state.result.storyboard] : [];
+}
+
+function currentStoryboard() {
+  return getStoryboards()[state.selectedStoryboardIndex] || null;
+}
+
+function syncStoryboardEdits() {
+  const storyboard = currentStoryboard();
+  if (!storyboard) return;
+
+  storyboardEditor.querySelectorAll("[data-storyboard-field]").forEach((field) => {
+    storyboard[field.dataset.storyboardField] = field.value.trim();
+  });
+
+  storyboard.scenes = storyboard.scenes || [];
+  storyboardEditor.querySelectorAll("[data-scene-index][data-scene-field]").forEach((field) => {
+    const index = Number(field.dataset.sceneIndex);
+    const key = field.dataset.sceneField;
+    storyboard.scenes[index] = storyboard.scenes[index] || {};
+    storyboard.scenes[index][key] = field.value.trim();
+  });
+
+  const storyboards = getStoryboards();
+  storyboards[state.selectedStoryboardIndex] = storyboard;
+  state.result.storyboards = storyboards;
+  state.result.storyboard = storyboards[0] || null;
 }
 
 function renderImageOutput() {
@@ -619,13 +790,19 @@ function selectedVariant() {
 }
 
 function updateConditionalUi() {
-  const platform = collectPayload("view").form.platform;
-  const isTikTok = platform.toLowerCase().includes("tiktok");
+  const isTikTok = isTikTokPlatform();
   storyboardToggleWrap.hidden = !isTikTok;
-  if (!isTikTok) {
-    const checkbox = storyboardToggleWrap.querySelector("input");
-    checkbox.checked = false;
+  if (isTikTok) {
+    if (!storyboardChoiceTouched) storyboardModeInput.checked = true;
+    imagePanel.hidden = true;
+  } else {
+    storyboardModeInput.checked = false;
+    storyboardChoiceTouched = false;
   }
+}
+
+function isTikTokPlatform() {
+  return collectPayload("view").form.platform.toLowerCase().includes("tiktok");
 }
 
 function updateFormatGuidance() {
@@ -714,15 +891,18 @@ ${variant.teachingNote || variant.revisionNote || ""}
 }
 
 function buildStoryboardText() {
-  const storyboard = state.result?.storyboard;
-  if (!storyboard) return "Storyboard\n\nNo storyboard generated yet.\n";
-  const rows = (storyboard.scenes || [])
-    .map(
-      (scene) =>
-        `Scene ${scene.scene || ""}\nTime: ${scene.time || ""}\nVisual: ${scene.visual || ""}\nAction: ${scene.action || ""}\nAudio / Voiceover: ${scene.audio || ""}\nOn-screen text suggestion: ${scene.onScreenText || ""}\nPurpose: ${scene.purpose || ""}`
-    )
-    .join("\n\n");
-  return `TikTok Storyboard
+  syncStoryboardEdits();
+  const storyboards = getStoryboards();
+  if (!storyboards.length) return "Storyboard\n\nNo storyboard generated yet.\n";
+  return storyboards
+    .map((storyboard, storyboardIndex) => {
+      const rows = (storyboard.scenes || [])
+        .map(
+          (scene) =>
+            `Scene ${scene.scene || ""}\nTime: ${scene.time || ""}\nVisual: ${scene.visual || ""}\nImage: ${scene.image || ""}\nAction: ${scene.action || ""}\nAudio / Voiceover: ${scene.audio || ""}\nOn-screen text suggestion: ${scene.onScreenText || ""}\nPurpose: ${scene.purpose || ""}`
+        )
+        .join("\n\n");
+      return `TikTok Storyboard ${storyboardIndex + 1}: ${storyboard.title || ""}
 
 Recommended length: ${storyboard.recommendedLength || ""}
 Pacing: ${storyboard.pacing || ""}
@@ -733,6 +913,8 @@ ${rows}
 Build Notes
 ${storyboard.buildNotes || ""}
 `;
+    })
+    .join("\n\n---\n\n");
 }
 
 function buildImagePromptsText() {
@@ -820,11 +1002,17 @@ function mockGenerate(payload) {
     teachingNote: `Draft uses ${formValues.contentFormat || "the selected format"} for a ${formValues.awarenessStage || "selected"} audience.`
   }));
 
+  const storyboards =
+    formValues.platform === "TikTok" && formValues.storyboardMode
+      ? Array.from({ length: formValues.variantCount || 2 }, (_, index) => mockStoryboard(formValues, index, variants[index]))
+      : [];
+
   return {
     demo: true,
     hooks,
     variants,
-    storyboard: formValues.platform === "TikTok" && formValues.storyboardMode ? mockStoryboard(formValues) : null,
+    storyboard: storyboards[0] || null,
+    storyboards,
     imagePrompts: mockImagePrompts(formValues, variants[0], { imageCount: 1, aspectRatio: "1:1", imageDirection: "Lifestyle scene" })
   };
 }
@@ -861,6 +1049,21 @@ function mockImage(payload) {
       mimeType: "image/svg+xml",
       dataUrl: mockSvgDataUrl(index, payload.settings.aspectRatio)
     }))
+  };
+}
+
+function mockStoryboardRevise(payload) {
+  return {
+    demo: true,
+    storyboard: {
+      ...payload.storyboard,
+      buildNotes: `${payload.storyboard?.buildNotes || ""}\nImprovement focus: ${payload.instruction}`,
+      scenes: (payload.storyboard?.scenes || []).map((scene) => ({
+        ...scene,
+        image: scene.image || `Reference image for ${scene.visual || "this scene"}`
+      }))
+    },
+    revisionNote: `AI storyboard improvement requested: ${payload.instruction}`
   };
 }
 
@@ -918,18 +1121,20 @@ function buildMockImageConcept(formValues) {
   ].join("\n");
 }
 
-function mockStoryboard(formValues) {
+function mockStoryboard(formValues, index = 0, variant = null) {
   return {
+    title: `Storyboard ${index + 1}`,
     recommendedLength: "18 seconds",
-    pacing: "Fast cuts with one clear benefit moment",
-    audioStyle: "Voiceover with natural product sound underneath",
+    pacing: index % 2 === 0 ? "Fast cuts with one clear benefit moment" : "Slower problem-to-solution sequence with a clear final payoff",
+    audioStyle: index % 2 === 0 ? "Voiceover with natural product sound underneath" : "Conversational voiceover with light background music",
     scenes: [
       {
         scene: "1",
         time: "0-3s",
-        visual: `Show ${formValues.audience} encountering the problem.`,
+        visual: index % 2 === 0 ? `Show ${formValues.audience} encountering the problem.` : `Open with a close-up of the moment ${formValues.audience} feels the problem.`,
+        image: `Reference image: ${formValues.audience} in the problem moment, vertical 9:16, no text.`,
         action: "Open on the tension immediately.",
-        audio: "Voiceover states the hook.",
+        audio: variant?.hook || "Voiceover states the hook.",
         onScreenText: "Short hook phrase",
         purpose: "Stop scroll"
       },
@@ -937,6 +1142,7 @@ function mockStoryboard(formValues) {
         scene: "2",
         time: "3-7s",
         visual: `Introduce ${formValues.brand} through the ${formValues.contentFormat.toLowerCase()} format.`,
+        image: `Reference image: ${formValues.brand} appears naturally in the scene, no text or logos.`,
         action: "Show the mechanism or contrast.",
         audio: "Explain the problem in plain language.",
         onScreenText: "Problem phrase",
@@ -946,6 +1152,7 @@ function mockStoryboard(formValues) {
         scene: "3",
         time: "7-13s",
         visual: `Show the main benefit: ${formValues.benefit}.`,
+        image: `Reference image: clear visual evidence of ${formValues.benefit}, no text overlay.`,
         action: "Demonstrate the outcome.",
         audio: `Make the benefit concrete: ${formValues.benefit}.`,
         onScreenText: "Benefit phrase",
@@ -955,6 +1162,7 @@ function mockStoryboard(formValues) {
         scene: "4",
         time: "13-18s",
         visual: "End on the product, user, or final outcome.",
+        image: `Reference image: final outcome shot for ${formValues.brand}, clean vertical composition.`,
         action: "Make the CTA feel easy.",
         audio: formValues.ctaType,
         onScreenText: "CTA phrase",
@@ -1013,4 +1221,8 @@ function escapeHtml(valueToEscape) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function escapeAttribute(valueToEscape) {
+  return escapeHtml(valueToEscape).replaceAll("\n", " ");
 }

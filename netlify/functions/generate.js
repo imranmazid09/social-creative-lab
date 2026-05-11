@@ -71,13 +71,15 @@ Return only valid JSON matching this shape:
     }
   ],
   "storyboard": null,
+  "storyboards": [],
   "imagePrompts": [
     { "title": "Image 1", "prompt": "image prompt with no visible text" }
   ]
 }
 
-If storyboard is requested, replace null with:
+If storyboard is requested, return both storyboard and storyboards. Storyboards must contain one storyboard per requested variant. The storyboard field should duplicate the first item in storyboards. Each storyboard must use:
 {
+  "title": "Storyboard 1",
   "recommendedLength": "15s, 30s, or 45s",
   "pacing": "pacing description",
   "audioStyle": "audio or voiceover style",
@@ -86,6 +88,7 @@ If storyboard is requested, replace null with:
       "scene": "1",
       "time": "0-3s",
       "visual": "what viewer sees",
+      "image": "reference image description for this scene, no text in image",
       "action": "what happens",
       "audio": "voiceover or sound cue",
       "onScreenText": "text overlay suggestion only, not for generated image",
@@ -119,6 +122,8 @@ Platform requirements:
 - Facebook: include hook, caption, CTA, and imageConcept.
 - Instagram: include first-line hook as hook, caption, hashtags, CTA, imageConcept, and mention feed/reel/carousel fit in teachingNote.
 - TikTok: include 3-second hook as hook, caption, hashtags, CTA, visual concept, and storyboard if requested.
+- For TikTok storyboard mode: create ${form.variantCount || 2} distinct storyboard variations that reflect the output controls, content format, hook type, caption length, tone, and CTA type.
+- Storyboard scenes must include an image field that describes the associated storyboard reference image for that scene. Images must be clean visual references with no text, typography, labels, logos, or watermarks.
 - Generate engagementQuestion only when Engagement question setting is not "No". If it is "No", return an empty string.
 
 Content rules:

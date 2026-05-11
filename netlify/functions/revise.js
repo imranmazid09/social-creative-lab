@@ -3,6 +3,10 @@ import { generateJson, jsonResponse, readPayload } from "./_shared.js";
 export async function handler(event) {
   try {
     const payload = readPayload(event);
+    if (payload.mode === "storyboard") {
+      return await handleStoryboardRevision(payload);
+    }
+
     const fallback = {
       demo: true,
       variant: {
@@ -26,6 +30,25 @@ export async function handler(event) {
   } catch (error) {
     return jsonResponse({ error: error.message || "Revision failed" }, error.statusCode || 500);
   }
+}
+
+async function handleStoryboardRevision(payload) {
+  const fallback = buildStoryboardFallback(payload);
+
+  if (!process.env.GEMINI_API_KEY) {
+    return jsonResponse(fallback);
+  }
+
+  const generated = await generateJson(buildStoryboardRevisionPrompt(payload));
+  return jsonResponse({
+    ...fallback,
+    ...generated,
+    storyboard: {
+      ...fallback.storyboard,
+      ...(generated.storyboard || {})
+    },
+    demo: false
+  });
 }
 
 function buildRevisionPrompt(payload) {
@@ -73,4 +96,87 @@ Rules:
 - Write imageConcept as six labeled lines: Subject, Artistic Style, Details, Composition, Lighting, Color.
 - Keep the image concept free of visible text, typography, captions, logos, or labels.
 - Make the revision reflect the student's instruction clearly.`;
+}
+
+function buildStoryboardFallback(payload) {
+  const storyboard = payload.storyboard || {};
+  return {
+    demo: true,
+    storyboard: {
+      title: storyboard.title || "Revised storyboard",
+      recommendedLength: storyboard.recommendedLength || "18 seconds",
+      pacing: storyboard.pacing || "Keep scenes clear and intentional.",
+      audioStyle: storyboard.audioStyle || "Voiceover with simple background audio.",
+      scenes: (storyboard.scenes || []).map((scene, index) => ({
+        scene: scene.scene || String(index + 1),
+        time: scene.time || "",
+        visual: scene.visual || "",
+        image: scene.image || `Reference image for scene ${index + 1}, no text or logos.`,
+        action: scene.action || "",
+        audio: scene.audio || "",
+        onScreenText: scene.onScreenText || "",
+        purpose: scene.purpose || ""
+      })),
+      buildNotes: `${storyboard.buildNotes || ""}\nImprovement focus: ${payload.instruction || "Student storyboard revision instruction."}`.trim()
+    },
+    revisionNote: `AI storyboard improvement requested: ${payload.instruction || ""}`
+  };
+}
+
+function buildStoryboardRevisionPrompt(payload) {
+  const form = payload.form || {};
+  const storyboard = payload.storyboard || {};
+  return `You are revising a TikTok storyboard for an undergraduate social media advertising class.
+
+Return only valid JSON matching:
+{
+  "storyboard": {
+    "title": "Revised storyboard title",
+    "recommendedLength": "15s, 30s, or 45s",
+    "pacing": "pacing description",
+    "audioStyle": "audio or voiceover style",
+    "scenes": [
+      {
+        "scene": "1",
+        "time": "0-3s",
+        "visual": "what viewer sees",
+        "image": "reference image description for this scene, no visible text",
+        "action": "what happens",
+        "audio": "voiceover or sound cue",
+        "onScreenText": "text overlay suggestion only, not for generated image",
+        "purpose": "Stop scroll / Build interest / Build trust / Convert"
+      }
+    ],
+    "buildNotes": "Canva/CapCut build guidance"
+  },
+  "revisionNote": "one sentence summarizing the improvement"
+}
+
+Student instruction:
+${payload.instruction}
+
+Original storyboard:
+${JSON.stringify(storyboard, null, 2)}
+
+Context:
+- Platform: ${form.platform}
+- Awareness stage: ${form.awarenessStage}
+- Format purpose: ${form.formatPurpose}
+- Content format: ${form.contentFormat}
+- Hook type: ${form.hookType}
+- Brand/product: ${form.brand}
+- Audience: ${form.audience}
+- Key problem or desire: ${form.problem}
+- Main benefit: ${form.benefit}
+- Caption length: ${form.captionLength}
+- Tone: ${form.tone}
+- CTA type: ${form.ctaType}
+
+Rules:
+- Keep the storyboard useful for TikTok and easy to build in Canva or CapCut.
+- Make the revision reflect the student's instruction clearly.
+- Include an image field for every scene.
+- Image fields should describe scene reference images only: no visible text, no typography, no labels, no logos, no watermarks.
+- Do not invent proof, statistics, endorsements, guarantees, or product facts.
+- On-screen text is only a separate editing suggestion and must not be placed inside generated images.`;
 }

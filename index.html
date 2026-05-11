@@ -23,9 +23,9 @@
           <li><strong>Content Inputs:</strong> Enter the product or brand, audience, key problem or desire, and main benefit. Be specific; the hook and caption will be built from this context.</li>
           <li><strong>Hook Builder:</strong> Choose a hook type and generate several hooks. Read the rationale, then select the hook that best fits the audience and format.</li>
           <li><strong>Output Controls:</strong> Set the number of variants, caption length, tone, emoji level, hashtag count, CTA type, and whether an engagement question should be included.</li>
-          <li><strong>Generate Content:</strong> Review the platform-specific outputs. For TikTok, turn on storyboard mode when you need scenes, timing, audio, and Canva or CapCut build notes.</li>
+          <li><strong>Generate Content:</strong> Review the platform-specific outputs. TikTok defaults to storyboard mode unless you turn it off.</li>
           <li><strong>Edit Or Revise:</strong> Either edit the selected caption manually or write a short instruction and ask AI to revise it. Do not treat the first draft as final.</li>
-          <li><strong>Image Asset:</strong> Generate image prompts only after the caption is ready. If you change image settings after prompts exist, regenerate prompts or reset the image asset.</li>
+          <li><strong>Image Asset:</strong> For Facebook or Instagram, generate image prompts only after the caption is ready. TikTok uses the storyboard output instead.</li>
           <li><strong>Download:</strong> Export the caption, storyboard, image prompts, image files, or the full package. Caption and image stay separate; add any text overlays later in Canva or another design tool.</li>
         </ol>
       </details>
@@ -311,13 +311,29 @@
 
       <section class="panel output-panel" id="storyboardPanel" hidden>
         <div class="section-heading">
-          <span class="step optional-step">Optional</span>
+          <span class="step">7</span>
           <div>
             <h2>TikTok Storyboard</h2>
             <p>Use the scene plan in Canva, CapCut, Adobe Express, or TikTok.</p>
           </div>
         </div>
         <div id="storyboardOutput"></div>
+        <div class="revision-grid storyboard-edit-grid">
+          <label>
+            Manual storyboard edit
+            <div id="storyboardEditor" class="storyboard-editor"></div>
+          </label>
+          <div class="revision-controls">
+            <label>
+              AI storyboard improvement instruction
+              <textarea id="storyboardInstruction" placeholder="Example: Make the scenes more visual, add clearer image directions, and tighten the pacing."></textarea>
+            </label>
+            <div class="button-row">
+              <button type="button" class="secondary" id="saveStoryboardBtn">Save Storyboard Edits</button>
+              <button type="button" id="improveStoryboardBtn">Improve Prompts With AI</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="panel output-panel" id="imagePanel" hidden>

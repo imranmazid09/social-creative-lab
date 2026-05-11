@@ -117,11 +117,17 @@ export function mockGenerate(payload) {
     teachingNote: `Draft uses ${form.contentFormat || "the selected format"} for a ${form.awarenessStage || "selected"} audience.`
   }));
 
+  const storyboards =
+    form.platform === "TikTok" && form.storyboardMode
+      ? Array.from({ length: variantCount }, (_, index) => mockStoryboard(form, index, variants[index]))
+      : [];
+
   return {
     demo: true,
     hooks,
     variants,
-    storyboard: form.platform === "TikTok" && form.storyboardMode ? mockStoryboard(form) : null,
+    storyboard: storyboards[0] || null,
+    storyboards,
     imagePrompts: mockImagePrompts(form, variants[0], {
       imageCount: 1,
       aspectRatio: "1:1",
@@ -130,18 +136,23 @@ export function mockGenerate(payload) {
   };
 }
 
-export function mockStoryboard(form) {
+export function mockStoryboard(form, index = 0, variant = null) {
   return {
+    title: `Storyboard ${index + 1}`,
     recommendedLength: "18 seconds",
-    pacing: "Fast cuts with one clear benefit moment",
-    audioStyle: "Voiceover with natural product sound underneath",
+    pacing: index % 2 === 0 ? "Fast cuts with one clear benefit moment" : "Slower problem-to-solution sequence with a clear final payoff",
+    audioStyle: index % 2 === 0 ? "Voiceover with natural product sound underneath" : "Conversational voiceover with light background music",
     scenes: [
       {
         scene: "1",
         time: "0-3s",
-        visual: `Show ${form.audience || "the audience"} encountering the problem.`,
+        visual:
+          index % 2 === 0
+            ? `Show ${form.audience || "the audience"} encountering the problem.`
+            : `Open with a close-up of the moment ${form.audience || "the audience"} feels the problem.`,
+        image: `Reference image: ${form.audience || "the audience"} in the problem moment, vertical 9:16, no text.`,
         action: "Open on the tension immediately.",
-        audio: "Voiceover states the hook.",
+        audio: variant?.hook || "Voiceover states the hook.",
         onScreenText: "Short hook phrase",
         purpose: "Stop scroll"
       },
@@ -149,6 +160,7 @@ export function mockStoryboard(form) {
         scene: "2",
         time: "3-7s",
         visual: `Introduce ${form.brand || "the brand"} through the selected format.`,
+        image: `Reference image: ${form.brand || "the brand"} appears naturally in the scene, no text or logos.`,
         action: "Show the mechanism or contrast.",
         audio: "Explain the problem in plain language.",
         onScreenText: "Problem phrase",
@@ -158,6 +170,7 @@ export function mockStoryboard(form) {
         scene: "3",
         time: "7-13s",
         visual: `Show the main benefit: ${form.benefit || "the outcome"}.`,
+        image: `Reference image: clear visual evidence of ${form.benefit || "the outcome"}, no text overlay.`,
         action: "Demonstrate the outcome.",
         audio: `Make the benefit concrete: ${form.benefit || "the outcome"}.`,
         onScreenText: "Benefit phrase",
@@ -167,6 +180,7 @@ export function mockStoryboard(form) {
         scene: "4",
         time: "13-18s",
         visual: "End on the product, user, or final outcome.",
+        image: `Reference image: final outcome shot for ${form.brand || "the brand"}, clean vertical composition.`,
         action: "Make the CTA feel easy.",
         audio: form.ctaType || "Invite action.",
         onScreenText: "CTA phrase",
