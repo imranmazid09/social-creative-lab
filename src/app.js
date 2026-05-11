@@ -523,6 +523,21 @@ async function postJsonStrict(url, payload) {
   return data;
 }
 
+async function postJsonStrictWithRetry(url, payload, { retries = 2, backoffMs = 1500 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await postJsonStrict(url, payload);
+    } catch (error) {
+      lastError = error;
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, backoffMs * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
 function normalizeResult(data) {
   const storyboards = data.storyboards || (data.storyboard ? [data.storyboard] : []);
   return {
@@ -856,7 +871,7 @@ async function generateStoryboardImagesForCurrent({ force = false } = {}) {
     const collected = [];
     let referenceImage = null;
     for (let index = 0; index < prompts.length; index += 1) {
-      const data = await postJsonStrict("/.netlify/functions/image", {
+      const data = await postJsonStrictWithRetry("/.netlify/functions/image", {
         ...basePayload,
         existingPrompts: [prompts[index]],
         castContinuity: index === 0,
