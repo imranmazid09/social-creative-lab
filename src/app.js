@@ -17,6 +17,9 @@ const storyboardToggleWrap = document.querySelector("#storyboardToggleWrap");
 const imagePanel = document.querySelector("#imagePanel");
 const imagePromptBtn = document.querySelector("#imagePromptBtn");
 const imageGenerateBtn = document.querySelector("#imageGenerateBtn");
+const savePromptsBtn = document.querySelector("#savePromptsBtn");
+const improvePromptsBtn = document.querySelector("#improvePromptsBtn");
+const imagePromptInstruction = document.querySelector("#imagePromptInstruction");
 const imageOutput = document.querySelector("#imageOutput");
 const downloadPanel = document.querySelector("#downloadPanel");
 const downloadCaptionBtn = document.querySelector("#downloadCaptionBtn");
@@ -110,7 +113,6 @@ form.addEventListener("change", () => {
 });
 
 generateHooksBtn.addEventListener("click", async () => {
-  if (!form.reportValidity()) return;
   await withLoading(generateHooksBtn, async () => {
     const payload = collectPayload("hooks");
     const data = await postJson("/.netlify/functions/generate", payload, () => mockGenerate(payload));
@@ -129,7 +131,7 @@ form.addEventListener("submit", async (event) => {
     const data = await postJson("/.netlify/functions/generate", payload, () => mockGenerate(payload));
     state.result = normalizeResult(data);
     state.selectedVariantIndex = 0;
-    state.imagePrompts = state.result.imagePrompts || [];
+    state.imagePrompts = [];
     state.images = [];
     renderGeneratedContent();
     renderStoryboard();
@@ -152,6 +154,7 @@ resetBtn.addEventListener("click", () => {
   state.selectedVariantIndex = 0;
   state.imagePrompts = [];
   state.images = [];
+  imagePromptInstruction.value = "";
   hookOptions.innerHTML = "";
   [generatedContent, revisionPanel, storyboardPanel, imagePanel, downloadPanel].forEach((el) => {
     el.hidden = true;
@@ -212,9 +215,41 @@ imagePromptBtn.addEventListener("click", async () => {
   });
 });
 
+savePromptsBtn.addEventListener("click", () => {
+  syncPromptEdits();
+  setStatus("Prompt edits saved");
+});
+
+improvePromptsBtn.addEventListener("click", async () => {
+  const variant = selectedVariant();
+  if (!variant) return;
+  syncPromptEdits();
+  const instruction = imagePromptInstruction.value.trim();
+  if (!state.imagePrompts.length) {
+    setStatus("Generate prompts first");
+    return;
+  }
+  if (!instruction) {
+    imagePromptInstruction.focus();
+    setStatus("Add prompt instruction");
+    return;
+  }
+  await withLoading(improvePromptsBtn, async () => {
+    const payload = {
+      ...collectImagePayload("improve-prompts"),
+      instruction
+    };
+    const data = await postJson("/.netlify/functions/image", payload, () => mockImage(payload));
+    state.imagePrompts = data.imagePrompts || state.imagePrompts;
+    renderImageOutput();
+    setStatus(data.demo ? "Mock prompt improvement ready" : "Prompts improved");
+  });
+});
+
 imageGenerateBtn.addEventListener("click", async () => {
   const variant = selectedVariant();
   if (!variant) return;
+  syncPromptEdits();
   await withLoading(imageGenerateBtn, async () => {
     const payload = collectImagePayload("generate");
     const data = await postJson("/.netlify/functions/image", payload, () => mockImage(payload));
@@ -256,14 +291,13 @@ function collectPayload(mode) {
     audience: value(data, "audience"),
     problem: value(data, "problem"),
     benefit: value(data, "benefit"),
-    proof: value(data, "proof"),
-    cta: value(data, "cta"),
     variantCount: numberChoice(data, "variantCount", "variantCountOther", 2, 5),
     captionLength: choice(data, "captionLength", "captionLengthOther"),
     tone: choice(data, "tone", "toneOther"),
     emojiLevel: choice(data, "emojiLevel", "emojiOther"),
     hashtagCount: numberChoice(data, "hashtagCount", "hashtagOther", 0, 12),
     ctaType: choice(data, "ctaType", "ctaTypeOther"),
+    engagementQuestion: choice(data, "engagementQuestion", "engagementQuestionOther"),
     storyboardMode: data.get("storyboardMode") === "on"
   };
 
@@ -397,7 +431,7 @@ function renderGeneratedContent() {
     node.querySelector(".variant-cta").textContent = variant.cta || "";
     node.querySelector(".variant-hashtags").textContent = hashtagsText(variant.hashtags);
     node.querySelector(".variant-engagement").textContent = variant.engagementQuestion || "";
-    node.querySelector(".variant-image").textContent = variant.imageConcept || "";
+    node.querySelector(".variant-image").textContent = formatImageConcept(variant.imageConcept);
     node.querySelector(".variant-note").textContent = variant.teachingNote || variant.revisionNote || "";
 
     if (!variant.engagementQuestion) node.querySelector(".engagement-block").hidden = true;
@@ -470,9 +504,18 @@ function renderImageOutput() {
       card.className = "prompt-card";
       card.innerHTML = `
         <h3>${escapeHtml(prompt.title || `Image Prompt ${index + 1}`)}</h3>
-        <p>${escapeHtml(prompt.prompt || "")}</p>
+        <label>
+          Editable image prompt
+          <textarea class="prompt-textarea" data-prompt-index="${index}">${escapeHtml(prompt.prompt || "")}</textarea>
+        </label>
       `;
       imageOutput.append(card);
+    });
+    imageOutput.querySelectorAll(".prompt-textarea").forEach((textarea) => {
+      textarea.addEventListener("input", () => {
+        const index = Number(textarea.dataset.promptIndex);
+        if (state.imagePrompts[index]) state.imagePrompts[index].prompt = textarea.value;
+      });
     });
   }
 
@@ -500,8 +543,15 @@ function renderImageOutput() {
   }
 
   if (!state.imagePrompts.length && !state.images.length) {
-    imageOutput.innerHTML = `<div class="notice">Generate image prompts first, or generate image files when your Gemini image model is available.</div>`;
+    imageOutput.innerHTML = `<div class="notice">No image prompt has been generated yet. Click Generate Image Prompts when the caption is ready.</div>`;
   }
+}
+
+function syncPromptEdits() {
+  imageOutput.querySelectorAll(".prompt-textarea").forEach((textarea) => {
+    const index = Number(textarea.dataset.promptIndex);
+    if (state.imagePrompts[index]) state.imagePrompts[index].prompt = textarea.value.trim();
+  });
 }
 
 function selectedVariant() {
@@ -628,7 +678,7 @@ ${variant.cta || ""}
 ${hashtagsText(variant.hashtags)}
 
 ## Image Concept
-${variant.imageConcept || ""}
+${formatImageConcept(variant.imageConcept)}
 
 ## Notes
 ${variant.teachingNote || variant.revisionNote || ""}
@@ -724,10 +774,12 @@ async function downloadPackage() {
 
 function mockGenerate(payload) {
   const formValues = payload.form;
-  const hook = payload.selectedHook || `${formValues.audience}, this is the ${formValues.problem.toLowerCase()} fix you wish you had sooner.`;
+  const hook =
+    payload.selectedHook ||
+    `${formValues.audience || "Your audience"}, this is the ${(formValues.problem || "problem").toLowerCase()} fix you wish you had sooner.`;
   const hooks = Array.from({ length: formValues.hookCount || 3 }, (_, index) => ({
-    text: index === 0 ? hook : `${formValues.hookType}: ${formValues.benefit} without the usual friction.`,
-    rationale: `Uses ${formValues.hookType.toLowerCase()} to match a ${formValues.awarenessStage.toLowerCase()} audience.`
+    text: index === 0 ? hook : `${formValues.hookType}: ${formValues.benefit || "a clearer outcome"} without the usual friction.`,
+    rationale: `Uses ${(formValues.hookType || "hook").toLowerCase()} to match a ${(formValues.awarenessStage || "selected").toLowerCase()} audience.`
   }));
 
   if (payload.mode === "hooks") return { demo: true, hooks };
@@ -735,12 +787,12 @@ function mockGenerate(payload) {
   const variants = Array.from({ length: formValues.variantCount || 2 }, (_, index) => ({
     title: `Version ${index + 1}`,
     hook: hooks[index % hooks.length].text,
-    caption: `${hooks[index % hooks.length].text}\n\n${formValues.brand} helps ${formValues.audience} move from "${formValues.problem}" to "${formValues.benefit}." The proof point to foreground: ${formValues.proof}.\n\n${formValues.cta}`,
-    cta: formValues.cta,
+    caption: `${hooks[index % hooks.length].text}\n\n${formValues.brand || "The brand"} helps ${formValues.audience || "the audience"} move from "${formValues.problem || "the problem"}" toward "${formValues.benefit || "the desired benefit"}."\n\n${formValues.ctaType || "Learn more"}.`,
+    cta: formValues.ctaType || "Learn more",
     hashtags: buildMockHashtags(formValues),
-    engagementQuestion: formValues.platform === "Facebook" ? "What part of this problem shows up most often for you?" : "",
-    imageConcept: `A clean ${formValues.contentFormat.toLowerCase()} visual showing ${formValues.audience} experiencing the benefit. No visible text in the image.`,
-    teachingNote: `Draft uses ${formValues.contentFormat} for a ${formValues.awarenessStage} audience.`
+    engagementQuestion: shouldIncludeEngagement(formValues) ? "What part of this problem shows up most often for you?" : "",
+    imageConcept: buildMockImageConcept(formValues),
+    teachingNote: `Draft uses ${formValues.contentFormat || "the selected format"} for a ${formValues.awarenessStage || "selected"} audience.`
   }));
 
   return {
@@ -767,10 +819,19 @@ function mockRevise(payload) {
 function mockImage(payload) {
   const prompts = mockImagePrompts(payload.form, payload.selectedVariant, payload.settings);
   if (payload.mode === "prompts") return { demo: true, imagePrompts: prompts };
+  if (payload.mode === "improve-prompts") {
+    return {
+      demo: true,
+      imagePrompts: (payload.existingPrompts || prompts).map((prompt) => ({
+        ...prompt,
+        prompt: `${prompt.prompt}\nImprovement focus: ${payload.instruction}`
+      }))
+    };
+  }
   return {
     demo: true,
-    imagePrompts: prompts,
-    images: prompts.map((prompt, index) => ({
+    imagePrompts: payload.existingPrompts?.length ? payload.existingPrompts : prompts,
+    images: (payload.existingPrompts?.length ? payload.existingPrompts : prompts).map((prompt, index) => ({
       filename: `mock-social-image-${index + 1}.svg`,
       mimeType: "image/svg+xml",
       dataUrl: mockSvgDataUrl(index, payload.settings.aspectRatio)
@@ -782,14 +843,31 @@ function mockImagePrompts(formValues, variant, settings) {
   const count = settings.imageCount || 1;
   return Array.from({ length: count }, (_, index) => ({
     title: `Image ${index + 1}: ${settings.imageDirection}`,
-    prompt: `Create a clean ${settings.aspectRatio} social media image for ${formValues.brand}. Direction: ${settings.imageDirection}. It should support this caption idea: "${variant?.hook || ""}" Visualize ${formValues.audience} moving from ${formValues.problem} toward ${formValues.benefit}. No visible text, no captions, no typography, no logos, no watermarks.`
+    prompt: `Subject: ${formValues.audience || "the audience"} experiencing ${formValues.benefit || "the benefit"} for ${formValues.brand || "the brand"}.
+Artistic style: polished editorial social media photography, natural and believable.
+Details: ${settings.imageDirection}; support the caption hook "${variant?.hook || ""}" without adding words.
+Composition: ${settings.aspectRatio} crop, clear focal subject, uncluttered background.
+Lighting: natural, flattering, platform-ready.
+Color: balanced, brand-neutral colors with enough contrast for social feeds.
+Restrictions: no visible text, no captions, no typography, no logos, no watermarks.`
   }));
+}
+
+function buildMockImageConcept(formValues) {
+  return [
+    `Subject: ${formValues.audience || "The target audience"} interacting with ${formValues.brand || "the brand"} in a way that makes the benefit visible.`,
+    "Artistic Style: Clean editorial social photography, realistic and not over-produced.",
+    `Details: Use the ${formValues.contentFormat || "selected"} format to show the problem-to-benefit movement.`,
+    "Composition: Clear focal subject, simple background, enough negative space for later Canva edits if needed.",
+    "Lighting: Natural, flattering, and bright enough for mobile feeds.",
+    "Color: Balanced colors that feel credible and platform-native."
+  ].join("\n");
 }
 
 function mockStoryboard(formValues) {
   return {
     recommendedLength: "18 seconds",
-    pacing: "Fast cuts with one clear proof moment",
+    pacing: "Fast cuts with one clear benefit moment",
     audioStyle: "Voiceover with natural product sound underneath",
     scenes: [
       {
@@ -815,8 +893,8 @@ function mockStoryboard(formValues) {
         time: "7-13s",
         visual: `Show the main benefit: ${formValues.benefit}.`,
         action: "Demonstrate the outcome.",
-        audio: `Mention proof: ${formValues.proof}.`,
-        onScreenText: "Proof phrase",
+        audio: `Make the benefit concrete: ${formValues.benefit}.`,
+        onScreenText: "Benefit phrase",
         purpose: "Build trust"
       },
       {
@@ -824,7 +902,7 @@ function mockStoryboard(formValues) {
         time: "13-18s",
         visual: "End on the product, user, or final outcome.",
         action: "Make the CTA feel easy.",
-        audio: formValues.cta,
+        audio: formValues.ctaType,
         onScreenText: "CTA phrase",
         purpose: "Convert"
       }
@@ -838,6 +916,27 @@ function buildMockHashtags(formValues) {
   if (!count) return [];
   const base = ["#socialmedia", "#creative", "#marketing", "#smallbusiness", "#brandstrategy", "#contentmarketing", "#tiktokmarketing", "#instagrammarketing"];
   return base.slice(0, count);
+}
+
+function formatImageConcept(imageConcept) {
+  if (!imageConcept) return "";
+  if (typeof imageConcept === "string") return imageConcept;
+  const labels = [
+    ["subject", "Subject"],
+    ["artisticStyle", "Artistic Style"],
+    ["details", "Details"],
+    ["composition", "Composition"],
+    ["lighting", "Lighting"],
+    ["color", "Color"]
+  ];
+  return labels
+    .map(([key, label]) => (imageConcept[key] ? `${label}: ${imageConcept[key]}` : ""))
+    .filter(Boolean)
+    .join("\n");
+}
+
+function shouldIncludeEngagement(formValues) {
+  return String(formValues.engagementQuestion || "No").toLowerCase() !== "no";
 }
 
 function mockSvgDataUrl(index, aspectRatio) {

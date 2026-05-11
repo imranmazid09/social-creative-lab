@@ -41,8 +41,8 @@ Return only valid JSON matching:
     "caption": "revised caption",
     "cta": "revised CTA",
     "hashtags": ["#tag"],
-    "engagementQuestion": "Facebook-only question or empty string",
-    "imageConcept": "updated image concept with no visible text",
+    "engagementQuestion": "question if requested, otherwise empty string",
+    "imageConcept": "Subject: ...\nArtistic Style: ...\nDetails: ...\nComposition: ...\nLighting: ...\nColor: ...",
     "teachingNote": "one sentence explaining what changed"
   },
   "revisionNote": "one sentence summarizing the revision"
@@ -64,11 +64,13 @@ Context:
 - Audience: ${form.audience}
 - Key problem or desire: ${form.problem}
 - Main benefit: ${form.benefit}
-- Proof/support: ${form.proof}
-- CTA: ${form.cta}
+- CTA type: ${form.ctaType}
+- Engagement question setting: ${form.engagementQuestion}
 
 Rules:
-- Preserve factual support. Do not invent proof.
+- Do not invent proof, statistics, endorsements, guarantees, or product facts.
+- Generate engagementQuestion only when Engagement question setting is not "No". If it is "No", return an empty string.
+- Write imageConcept as six labeled lines: Subject, Artistic Style, Details, Composition, Lighting, Color.
 - Keep the image concept free of visible text, typography, captions, logos, or labels.
 - Make the revision reflect the student's instruction clearly.`;
 }

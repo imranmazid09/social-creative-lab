@@ -109,11 +109,11 @@ export function mockGenerate(payload) {
   const variants = Array.from({ length: variantCount }, (_, index) => ({
     title: `Version ${index + 1}`,
     hook: hooks[index % hooks.length].text,
-    caption: `${hooks[index % hooks.length].text}\n\n${form.brand || "The brand"} helps ${form.audience || "the audience"} move from "${form.problem || "the problem"}" to "${form.benefit || "the desired benefit"}." The proof point to foreground: ${form.proof || "clear support"}.\n\n${form.cta || "Take the next step."}`,
-    cta: form.cta || form.ctaType || "Learn more",
+    caption: `${hooks[index % hooks.length].text}\n\n${form.brand || "The brand"} helps ${form.audience || "the audience"} move from "${form.problem || "the problem"}" toward "${form.benefit || "the desired benefit"}."\n\n${form.ctaType || "Learn more"}.`,
+    cta: form.ctaType || "Learn more",
     hashtags: buildHashtags(form),
-    engagementQuestion: form.platform === "Facebook" ? "What part of this problem shows up most often for you?" : "",
-    imageConcept: `A clean ${String(form.contentFormat || "social").toLowerCase()} visual showing ${form.audience || "the audience"} experiencing the benefit. No visible text in the image.`,
+    engagementQuestion: shouldIncludeEngagement(form) ? "What part of this problem shows up most often for you?" : "",
+    imageConcept: buildDetailedImageConcept(form),
     teachingNote: `Draft uses ${form.contentFormat || "the selected format"} for a ${form.awarenessStage || "selected"} audience.`
   }));
 
@@ -133,7 +133,7 @@ export function mockGenerate(payload) {
 export function mockStoryboard(form) {
   return {
     recommendedLength: "18 seconds",
-    pacing: "Fast cuts with one clear proof moment",
+    pacing: "Fast cuts with one clear benefit moment",
     audioStyle: "Voiceover with natural product sound underneath",
     scenes: [
       {
@@ -159,8 +159,8 @@ export function mockStoryboard(form) {
         time: "7-13s",
         visual: `Show the main benefit: ${form.benefit || "the outcome"}.`,
         action: "Demonstrate the outcome.",
-        audio: `Mention proof: ${form.proof || "the support"}.`,
-        onScreenText: "Proof phrase",
+        audio: `Make the benefit concrete: ${form.benefit || "the outcome"}.`,
+        onScreenText: "Benefit phrase",
         purpose: "Build trust"
       },
       {
@@ -168,7 +168,7 @@ export function mockStoryboard(form) {
         time: "13-18s",
         visual: "End on the product, user, or final outcome.",
         action: "Make the CTA feel easy.",
-        audio: form.cta || "Invite action.",
+        audio: form.ctaType || "Invite action.",
         onScreenText: "CTA phrase",
         purpose: "Convert"
       }
@@ -181,22 +181,53 @@ export function mockImagePrompts(form, variant, settings) {
   const count = clampNumber(settings?.imageCount, 1, 1, 3);
   return Array.from({ length: count }, (_, index) => ({
     title: `Image ${index + 1}: ${settings?.imageDirection || "Image direction"}`,
-    prompt: `Create a clean ${settings?.aspectRatio || "1:1"} social media image for ${form.brand || "the brand"}. Direction: ${settings?.imageDirection || "lifestyle scene"}. Support this caption idea: "${variant?.hook || ""}" Visualize ${form.audience || "the audience"} moving from ${form.problem || "the problem"} toward ${form.benefit || "the benefit"}. No visible text, no captions, no typography, no logos, no watermarks.`
+    prompt: `Subject: ${form.audience || "the audience"} experiencing ${form.benefit || "the benefit"} for ${form.brand || "the brand"}.
+Artistic style: polished editorial social media photography, natural and believable.
+Details: ${settings?.imageDirection || "lifestyle scene"}; support the caption hook "${variant?.hook || ""}" without adding words.
+Composition: ${settings?.aspectRatio || "1:1"} crop, clear focal subject, uncluttered background.
+Lighting: natural, flattering, platform-ready.
+Color: balanced, brand-neutral colors with enough contrast for social feeds.
+Restrictions: no visible text, no captions, no typography, no logos, no watermarks.`
   }));
 }
 
 export function mockImageResponse(payload) {
   const prompts = mockImagePrompts(payload.form || {}, payload.selectedVariant || {}, payload.settings || {});
   if (payload.mode === "prompts") return { demo: true, imagePrompts: prompts };
+  if (payload.mode === "improve-prompts") {
+    return {
+      demo: true,
+      imagePrompts: (payload.existingPrompts?.length ? payload.existingPrompts : prompts).map((prompt) => ({
+        ...prompt,
+        prompt: `${prompt.prompt}\nImprovement focus: ${payload.instruction || "Make the prompt more specific and production-ready."}`
+      }))
+    };
+  }
+  const outputPrompts = payload.existingPrompts?.length ? payload.existingPrompts : prompts;
   return {
     demo: true,
-    imagePrompts: prompts,
-    images: prompts.map((prompt, index) => ({
+    imagePrompts: outputPrompts,
+    images: outputPrompts.map((prompt, index) => ({
       filename: `mock-social-image-${index + 1}.svg`,
       mimeType: "image/svg+xml",
       dataUrl: mockSvgDataUrl(index, payload.settings?.aspectRatio || "1:1")
     }))
   };
+}
+
+function buildDetailedImageConcept(form) {
+  return [
+    `Subject: ${form.audience || "The target audience"} interacting with ${form.brand || "the brand"} in a way that makes the benefit visible.`,
+    "Artistic Style: Clean editorial social photography, realistic and not over-produced.",
+    `Details: Use the ${form.contentFormat || "selected"} format to show the problem-to-benefit movement.`,
+    "Composition: Clear focal subject, simple background, enough negative space for later Canva edits if needed.",
+    "Lighting: Natural, flattering, and bright enough for mobile feeds.",
+    "Color: Balanced colors that feel credible and platform-native."
+  ].join("\n");
+}
+
+function shouldIncludeEngagement(form) {
+  return String(form.engagementQuestion || "No").toLowerCase() !== "no";
 }
 
 function mockSvgDataUrl(index, aspectRatio) {

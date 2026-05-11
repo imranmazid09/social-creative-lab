@@ -45,8 +45,6 @@ Rules:
 - Audience: ${form.audience}
 - Key problem or desire: ${form.problem}
 - Main benefit: ${form.benefit}
-- Proof/support: ${form.proof}
-- CTA: ${form.cta}
 - Make hooks concrete and specific.
 - Do not write the full caption.`;
 }
@@ -67,8 +65,8 @@ Return only valid JSON matching this shape:
       "caption": "platform-ready caption",
       "cta": "call to action",
       "hashtags": ["#tag"],
-      "engagementQuestion": "Facebook-only question or empty string",
-      "imageConcept": "clean image concept with no visible text",
+      "engagementQuestion": "question if requested, otherwise empty string",
+      "imageConcept": "Subject: ...\nArtistic Style: ...\nDetails: ...\nComposition: ...\nLighting: ...\nColor: ...",
       "teachingNote": "short note explaining the strategic choice"
     }
   ],
@@ -108,24 +106,25 @@ Inputs:
 - Audience: ${form.audience}
 - Key problem or desire: ${form.problem}
 - Main benefit: ${form.benefit}
-- Proof/support: ${form.proof}
-- CTA: ${form.cta}
 - Number of variants: ${form.variantCount}
 - Caption length: ${form.captionLength}
 - Tone: ${form.tone}
 - Emoji level: ${form.emojiLevel}
 - Hashtag count: ${form.hashtagCount}
 - CTA type: ${form.ctaType}
+- Engagement question setting: ${form.engagementQuestion}
 - Storyboard requested: ${wantsStoryboard ? "yes" : "no"}
 
 Platform requirements:
-- Facebook: include hook, caption, CTA, engagementQuestion, imageConcept.
+- Facebook: include hook, caption, CTA, and imageConcept.
 - Instagram: include first-line hook as hook, caption, hashtags, CTA, imageConcept, and mention feed/reel/carousel fit in teachingNote.
 - TikTok: include 3-second hook as hook, caption, hashtags, CTA, visual concept, and storyboard if requested.
+- Generate engagementQuestion only when Engagement question setting is not "No". If it is "No", return an empty string.
 
 Content rules:
 - Use the selected content format intentionally.
-- If a claim is not supported by the proof input, weaken it or frame it as a benefit direction.
+- Do not invent proof, statistics, endorsements, guarantees, or product facts.
+- Write imageConcept as six labeled lines: Subject, Artistic Style, Details, Composition, Lighting, Color.
 - Keep generated image concepts and image prompts free of visible text, captions, typography, logos, and labels.
 - Captions and images are separate assets.`;
 }

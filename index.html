@@ -166,14 +166,6 @@
               Main benefit
               <textarea name="benefit" placeholder="What outcome should the audience care about?" required></textarea>
             </label>
-            <label>
-              Proof or support
-              <textarea name="proof" placeholder="What supports the benefit? Demo detail, review, statistic, example, guarantee, or observation." required></textarea>
-            </label>
-            <label>
-              CTA
-              <input name="cta" placeholder="Example: Try it this week" required />
-            </label>
           </div>
         </section>
 
@@ -254,6 +246,15 @@
                 <option value="Other">Other</option>
               </select>
               <input class="other-input" id="ctaTypeOther" name="ctaTypeOther" placeholder="Specify CTA type" />
+            </label>
+            <label>
+              Engagement question
+              <select data-other="engagementQuestionOther" name="engagementQuestion">
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+                <option value="Other">Other</option>
+              </select>
+              <input class="other-input" id="engagementQuestionOther" name="engagementQuestionOther" placeholder="Specify engagement question guidance" />
             </label>
           </div>
           <label class="checkbox-line" id="storyboardToggleWrap">
@@ -361,8 +362,14 @@
         </div>
         <div class="button-row">
           <button type="button" class="secondary" id="imagePromptBtn">Generate Image Prompts</button>
+          <button type="button" class="secondary" id="savePromptsBtn">Save Prompt Edits</button>
+          <button type="button" class="secondary" id="improvePromptsBtn">Improve Prompts With AI</button>
           <button type="button" id="imageGenerateBtn">Generate Images</button>
         </div>
+        <label class="prompt-improve">
+          Image prompt improvement instruction
+          <textarea id="imagePromptInstruction" placeholder="Example: Make the subject more specific, use softer lighting, and avoid anything that looks like a stock photo."></textarea>
+        </label>
         <div id="imageOutput" class="image-output"></div>
       </section>
 

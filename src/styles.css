@@ -470,6 +470,14 @@ th {
   padding: 0.85rem;
 }
 
+.prompt-card textarea {
+  min-height: 170px;
+}
+
+.prompt-improve textarea {
+  min-height: 86px;
+}
+
 .image-grid {
   display: grid;
   gap: 12px;

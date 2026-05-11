@@ -8,9 +8,11 @@ A classroom tool for helping students create platform-native social media conten
 - Uses dropdowns for all option lists, with an `Other` field for student-specific choices.
 - Generates hooks before full captions so students choose an opening intentionally.
 - Produces Facebook, Instagram, or TikTok-specific outputs.
+- Lets students decide whether an engagement question should be included.
 - Adds TikTok storyboard mode with scenes, timing, visuals, audio, and Canva/CapCut build notes.
 - Keeps captions and images as separate assets.
-- Generates clean image prompts and optional image files with no visible text embedded in the image.
+- Generates clean, detailed image concepts and editable image prompts with no visible text embedded in the image.
+- Lets students manually edit image prompts or ask AI to improve them before generating images.
 - Allows manual editing or AI revision with a student-written revision instruction.
 - Downloads captions, storyboard, images, and a full package zip.
 

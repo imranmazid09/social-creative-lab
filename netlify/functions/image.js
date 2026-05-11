@@ -18,6 +18,15 @@ export async function handler(event) {
       });
     }
 
+    if (payload.mode === "improve-prompts") {
+      const generated = await generateJson(buildPromptImprovementPrompt(payload));
+      return jsonResponse({
+        ...fallback,
+        ...generated,
+        demo: false
+      });
+    }
+
     const prompts = payload.existingPrompts?.length
       ? payload.existingPrompts
       : (await generateJson(buildPromptGenerationPrompt(payload))).imagePrompts ||
@@ -79,7 +88,6 @@ Context:
 - Audience: ${form.audience}
 - Key problem or desire: ${form.problem}
 - Main benefit: ${form.benefit}
-- Proof/support: ${form.proof}
 - Caption hook: ${variant.hook}
 - Caption: ${variant.caption}
 - Image direction: ${settings.imageDirection}
@@ -89,8 +97,46 @@ Rules:
 - The image and caption are separate social media content elements.
 - The image must be ready to upload as a standalone Facebook or Instagram image.
 - Do not put visible text, words, captions, typography, labels, logos, or watermarks in the image.
-- Do not ask for claims that are not supported by the proof input.
+- Do not invent proof, statistics, endorsements, guarantees, or product facts.
+- Structure each prompt with these labels: Subject, Artistic style, Details, Composition, Lighting, Color, Restrictions.
 - Use concrete visual details and production style guidance.`;
+}
+
+function buildPromptImprovementPrompt(payload) {
+  const form = payload.form || {};
+  const settings = payload.settings || {};
+  return `You are improving editable image-generation prompts for a social media classroom tool.
+
+Return only valid JSON matching:
+{
+  "imagePrompts": [
+    { "title": "Image 1: short direction", "prompt": "improved complete image generation prompt" }
+  ]
+}
+
+Student improvement instruction:
+${payload.instruction}
+
+Existing prompts:
+${JSON.stringify(payload.existingPrompts || [], null, 2)}
+
+Context:
+- Platform: ${form.platform}
+- Content format: ${form.contentFormat}
+- Awareness stage: ${form.awarenessStage}
+- Brand/product: ${form.brand}
+- Audience: ${form.audience}
+- Key problem or desire: ${form.problem}
+- Main benefit: ${form.benefit}
+- Image direction: ${settings.imageDirection}
+- Aspect ratio: ${settings.aspectRatio}
+
+Rules:
+- Preserve the no-text rule: no visible text, words, captions, typography, labels, logos, or watermarks.
+- Keep captions and images separate.
+- Do not invent proof, statistics, endorsements, guarantees, or product facts.
+- Structure each prompt with these labels: Subject, Artistic style, Details, Composition, Lighting, Color, Restrictions.
+- Make the improvement visible and specific.`;
 }
 
 function buildImagePrompt(basePrompt, payload) {
