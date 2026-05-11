@@ -19,7 +19,9 @@ const imagePromptBtn = document.querySelector("#imagePromptBtn");
 const imageGenerateBtn = document.querySelector("#imageGenerateBtn");
 const savePromptsBtn = document.querySelector("#savePromptsBtn");
 const improvePromptsBtn = document.querySelector("#improvePromptsBtn");
+const resetImageBtn = document.querySelector("#resetImageBtn");
 const imagePromptInstruction = document.querySelector("#imagePromptInstruction");
+const imageSettingsNotice = document.querySelector("#imageSettingsNotice");
 const imageOutput = document.querySelector("#imageOutput");
 const downloadPanel = document.querySelector("#downloadPanel");
 const downloadCaptionBtn = document.querySelector("#downloadCaptionBtn");
@@ -211,6 +213,8 @@ imagePromptBtn.addEventListener("click", async () => {
     const payload = collectImagePayload("prompts");
     const data = await postJson("/.netlify/functions/image", payload, () => mockImage(payload));
     state.imagePrompts = data.imagePrompts || [];
+    state.images = [];
+    markImageSettingsDirty(false);
     renderImageOutput();
     setStatus(data.demo ? "Mock prompts ready" : "Image prompts ready");
   });
@@ -256,9 +260,20 @@ imageGenerateBtn.addEventListener("click", async () => {
     const data = await postJson("/.netlify/functions/image", payload, () => mockImage(payload));
     state.imagePrompts = data.imagePrompts || state.imagePrompts;
     state.images = data.images || [];
+    markImageSettingsDirty(false);
     renderImageOutput();
     setStatus(data.demo ? "Mock image previews ready" : "Images ready");
   });
+});
+
+resetImageBtn.addEventListener("click", () => {
+  resetImageAsset();
+  setStatus("Image asset reset");
+});
+
+document.querySelectorAll("#imageCount, #aspectRatio, #imageDirection, #imageCountOther, #aspectOther, #imageDirectionOther").forEach((field) => {
+  field.addEventListener("change", () => markImageSettingsDirty(Boolean(state.imagePrompts.length || state.images.length)));
+  field.addEventListener("input", () => markImageSettingsDirty(Boolean(state.imagePrompts.length || state.images.length)));
 });
 
 downloadCaptionBtn.addEventListener("click", () => {
@@ -574,6 +589,19 @@ function renderImageOutput() {
   }
 }
 
+function resetImageAsset() {
+  state.imagePrompts = [];
+  state.images = [];
+  imagePromptInstruction.value = "";
+  markImageSettingsDirty(false);
+  renderImageOutput();
+}
+
+function markImageSettingsDirty(isDirty) {
+  imagePanel.dataset.settingsDirty = isDirty ? "true" : "false";
+  imageSettingsNotice.hidden = !isDirty;
+}
+
 function syncPromptEdits() {
   imageOutput.querySelectorAll(".prompt-textarea").forEach((textarea) => {
     const index = Number(textarea.dataset.promptIndex);
@@ -868,16 +896,45 @@ function mockImage(payload) {
 
 function mockImagePrompts(formValues, variant, settings) {
   const count = settings.imageCount || 1;
+  const direction = imageDirectionInstruction(settings.imageDirection, formValues);
   return Array.from({ length: count }, (_, index) => ({
     title: `Image ${index + 1}: ${settings.imageDirection}`,
     prompt: `Subject: ${formValues.audience || "the audience"} experiencing ${formValues.benefit || "the benefit"} for ${formValues.brand || "the brand"}.
 Artistic style: polished editorial social media photography, natural and believable.
-Details: ${settings.imageDirection}; support the caption hook "${variant?.hook || ""}" without adding words.
+Details: ${direction} Support the caption hook "${variant?.hook || ""}" without adding words.
 Composition: ${settings.aspectRatio} crop, clear focal subject, uncluttered background.
 Lighting: natural, flattering, platform-ready.
 Color: balanced, brand-neutral colors with enough contrast for social feeds.
 Restrictions: no visible text, no captions, no typography, no logos, no watermarks.`
   }));
+}
+
+function imageDirectionInstruction(direction, formValues) {
+  const value = String(direction || "").toLowerCase();
+  const brand = formValues.brand || "the product";
+  const audience = formValues.audience || "the audience";
+  const problem = formValues.problem || "the problem";
+  const benefit = formValues.benefit || "the benefit";
+
+  if (value.includes("product")) {
+    return `Create a product-first commercial photograph with ${brand} as the hero subject, isolated or on a simple surface, minimal human presence, crisp product detail, and a clean background.`;
+  }
+  if (value.includes("lifestyle")) {
+    return `Create a real-life usage scene showing ${audience} naturally using ${brand} in context, with the environment and body language communicating ${benefit}.`;
+  }
+  if (value.includes("problem") || value.includes("solution")) {
+    return `Create a visual contrast between the pain state (${problem}) and the improved state (${benefit}) in one coherent scene, without text labels or split-screen words.`;
+  }
+  if (value.includes("behind")) {
+    return `Create an authentic process-focused image: making, packing, preparing, founder work, workspace, or hands-on detail that builds trust in ${brand}.`;
+  }
+  if (value.includes("educational")) {
+    return `Create a clean explanatory visual that makes the idea understandable through objects, gestures, sequence, or spatial arrangement, but uses no diagrams or text.`;
+  }
+  if (value.includes("before") || value.includes("after")) {
+    return `Create a before-and-after style visual using two clearly different states or moments, showing movement from ${problem} to ${benefit}, with no labels or text.`;
+  }
+  return `${direction || "Create a strategically relevant visual"} for ${brand}.`;
 }
 
 function buildMockImageConcept(formValues) {

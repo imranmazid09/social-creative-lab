@@ -211,6 +211,12 @@ h3 {
   width: 34px;
 }
 
+.optional-step {
+  flex-basis: auto;
+  padding: 0 0.58rem;
+  width: auto;
+}
+
 .form-grid {
   display: grid;
   gap: 14px;

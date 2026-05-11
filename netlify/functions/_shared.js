@@ -179,11 +179,12 @@ export function mockStoryboard(form) {
 
 export function mockImagePrompts(form, variant, settings) {
   const count = clampNumber(settings?.imageCount, 1, 1, 3);
+  const direction = imageDirectionInstruction(settings?.imageDirection, form);
   return Array.from({ length: count }, (_, index) => ({
     title: `Image ${index + 1}: ${settings?.imageDirection || "Image direction"}`,
     prompt: `Subject: ${form.audience || "the audience"} experiencing ${form.benefit || "the benefit"} for ${form.brand || "the brand"}.
 Artistic style: polished editorial social media photography, natural and believable.
-Details: ${settings?.imageDirection || "lifestyle scene"}; support the caption hook "${variant?.hook || ""}" without adding words.
+Details: ${direction} Support the caption hook "${variant?.hook || ""}" without adding words.
 Composition: ${settings?.aspectRatio || "1:1"} crop, clear focal subject, uncluttered background.
 Lighting: natural, flattering, platform-ready.
 Color: balanced, brand-neutral colors with enough contrast for social feeds.
@@ -224,6 +225,34 @@ function buildDetailedImageConcept(form) {
     "Lighting: Natural, flattering, and bright enough for mobile feeds.",
     "Color: Balanced colors that feel credible and platform-native."
   ].join("\n");
+}
+
+function imageDirectionInstruction(direction, form) {
+  const value = String(direction || "").toLowerCase();
+  const brand = form.brand || "the product";
+  const audience = form.audience || "the audience";
+  const problem = form.problem || "the problem";
+  const benefit = form.benefit || "the benefit";
+
+  if (value.includes("product")) {
+    return `Create a product-first commercial photograph with ${brand} as the hero subject, isolated or on a simple surface, minimal human presence, crisp product detail, and a clean background.`;
+  }
+  if (value.includes("lifestyle")) {
+    return `Create a real-life usage scene showing ${audience} naturally using ${brand} in context, with the environment and body language communicating ${benefit}.`;
+  }
+  if (value.includes("problem") || value.includes("solution")) {
+    return `Create a visual contrast between the pain state (${problem}) and the improved state (${benefit}) in one coherent scene, without text labels or split-screen words.`;
+  }
+  if (value.includes("behind")) {
+    return `Create an authentic process-focused image: making, packing, preparing, founder work, workspace, or hands-on detail that builds trust in ${brand}.`;
+  }
+  if (value.includes("educational")) {
+    return `Create a clean explanatory visual that makes the idea understandable through objects, gestures, sequence, or spatial arrangement, but uses no diagrams or text.`;
+  }
+  if (value.includes("before") || value.includes("after")) {
+    return `Create a before-and-after style visual using two clearly different states or moments, showing movement from ${problem} to ${benefit}, with no labels or text.`;
+  }
+  return `${direction || "Create a strategically relevant visual"} for ${brand}.`;
 }
 
 function shouldIncludeEngagement(form) {

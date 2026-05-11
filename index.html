@@ -25,7 +25,7 @@
           <li><strong>Output Controls:</strong> Set the number of variants, caption length, tone, emoji level, hashtag count, CTA type, and whether an engagement question should be included.</li>
           <li><strong>Generate Content:</strong> Review the platform-specific outputs. For TikTok, turn on storyboard mode when you need scenes, timing, audio, and Canva or CapCut build notes.</li>
           <li><strong>Edit Or Revise:</strong> Either edit the selected caption manually or write a short instruction and ask AI to revise it. Do not treat the first draft as final.</li>
-          <li><strong>Image Asset:</strong> Generate image prompts only after the caption is ready. Edit the prompt yourself or ask AI to improve it before generating images.</li>
+          <li><strong>Image Asset:</strong> Generate image prompts only after the caption is ready. If you change image settings after prompts exist, regenerate prompts or reset the image asset.</li>
           <li><strong>Download:</strong> Export the caption, storyboard, image prompts, image files, or the full package. Caption and image stay separate; add any text overlays later in Canva or another design tool.</li>
         </ol>
       </details>
@@ -311,7 +311,7 @@
 
       <section class="panel output-panel" id="storyboardPanel" hidden>
         <div class="section-heading">
-          <span class="step">7</span>
+          <span class="step optional-step">Optional</span>
           <div>
             <h2>TikTok Storyboard</h2>
             <p>Use the scene plan in Canva, CapCut, Adobe Express, or TikTok.</p>
@@ -322,7 +322,7 @@
 
       <section class="panel output-panel" id="imagePanel" hidden>
         <div class="section-heading">
-          <span class="step">8</span>
+          <span class="step">7</span>
           <div>
             <h2>Image Asset</h2>
             <p>Create a separate image asset with no visible text embedded in the image.</p>
@@ -368,8 +368,10 @@
           <button type="button" class="secondary" id="imagePromptBtn">Generate Image Prompts</button>
           <button type="button" class="secondary" id="savePromptsBtn">Save Prompt Edits</button>
           <button type="button" class="secondary" id="improvePromptsBtn">Improve Prompts With AI</button>
+          <button type="button" class="secondary" id="resetImageBtn">Reset Image Asset</button>
           <button type="button" id="imageGenerateBtn">Generate Images</button>
         </div>
+        <div id="imageSettingsNotice" class="notice" hidden>Image settings changed. Regenerate image prompts or reset this section before generating new images.</div>
         <label class="prompt-improve">
           Image prompt improvement instruction
           <textarea id="imagePromptInstruction" placeholder="Example: Make the subject more specific, use softer lighting, and avoid anything that looks like a stock photo."></textarea>
@@ -379,7 +381,7 @@
 
       <section class="panel output-panel" id="downloadPanel" hidden>
         <div class="section-heading">
-          <span class="step">9</span>
+          <span class="step">8</span>
           <div>
             <h2>Downloads</h2>
             <p>Export the caption, storyboard, image prompts, images, or the full package.</p>

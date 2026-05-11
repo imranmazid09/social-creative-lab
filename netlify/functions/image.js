@@ -91,6 +91,7 @@ Context:
 - Caption hook: ${variant.hook}
 - Caption: ${variant.caption}
 - Image direction: ${settings.imageDirection}
+- Image direction instruction: ${imageDirectionInstruction(settings.imageDirection, form)}
 - Aspect ratio: ${settings.aspectRatio}
 
 Rules:
@@ -99,6 +100,7 @@ Rules:
 - Do not put visible text, words, captions, typography, labels, logos, or watermarks in the image.
 - Do not invent proof, statistics, endorsements, guarantees, or product facts.
 - Structure each prompt with these labels: Subject, Artistic style, Details, Composition, Lighting, Color, Restrictions.
+- Make the image direction visibly different from other directions. Product photo should not look like lifestyle; problem/solution should clearly contrast pain and improvement; behind-the-scenes should show process; educational should explain visually without text.
 - Use concrete visual details and production style guidance.`;
 }
 
@@ -129,6 +131,7 @@ Context:
 - Key problem or desire: ${form.problem}
 - Main benefit: ${form.benefit}
 - Image direction: ${settings.imageDirection}
+- Image direction instruction: ${imageDirectionInstruction(settings.imageDirection, form)}
 - Aspect ratio: ${settings.aspectRatio}
 
 Rules:
@@ -136,7 +139,36 @@ Rules:
 - Keep captions and images separate.
 - Do not invent proof, statistics, endorsements, guarantees, or product facts.
 - Structure each prompt with these labels: Subject, Artistic style, Details, Composition, Lighting, Color, Restrictions.
+- Make the image direction visibly different from other directions. Product photo should not look like lifestyle; problem/solution should clearly contrast pain and improvement; behind-the-scenes should show process; educational should explain visually without text.
 - Make the improvement visible and specific.`;
+}
+
+function imageDirectionInstruction(direction, form) {
+  const value = String(direction || "").toLowerCase();
+  const brand = form.brand || "the product";
+  const audience = form.audience || "the audience";
+  const problem = form.problem || "the problem";
+  const benefit = form.benefit || "the benefit";
+
+  if (value.includes("product")) {
+    return `Create a product-first commercial photograph with ${brand} as the hero subject, isolated or on a simple surface, minimal human presence, crisp product detail, and a clean background.`;
+  }
+  if (value.includes("lifestyle")) {
+    return `Create a real-life usage scene showing ${audience} naturally using ${brand} in context, with the environment and body language communicating ${benefit}.`;
+  }
+  if (value.includes("problem") || value.includes("solution")) {
+    return `Create a visual contrast between the pain state (${problem}) and the improved state (${benefit}) in one coherent scene, without text labels or split-screen words.`;
+  }
+  if (value.includes("behind")) {
+    return `Create an authentic process-focused image: making, packing, preparing, founder work, workspace, or hands-on detail that builds trust in ${brand}.`;
+  }
+  if (value.includes("educational")) {
+    return `Create a clean explanatory visual that makes the idea understandable through objects, gestures, sequence, or spatial arrangement, but uses no diagrams or text.`;
+  }
+  if (value.includes("before") || value.includes("after")) {
+    return `Create a before-and-after style visual using two clearly different states or moments, showing movement from ${problem} to ${benefit}, with no labels or text.`;
+  }
+  return `${direction || "Create a strategically relevant visual"} for ${brand}.`;
 }
 
 function buildImagePrompt(basePrompt, payload) {
