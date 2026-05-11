@@ -364,15 +364,27 @@ downloadCaptionBtn.addEventListener("click", () => {
   downloadText("caption.txt", buildCaptionText(), "text/plain");
 });
 
-downloadStoryboardBtn.addEventListener("click", () => {
-  downloadText("storyboard.txt", buildStoryboardText(), "text/plain");
+downloadStoryboardBtn.addEventListener("click", async () => {
+  await withLoading(downloadStoryboardBtn, async () => {
+    if (isTikTokPlatform()) {
+      const pdfBlob = await buildStoryboardPdfBlob();
+      if (pdfBlob) {
+        downloadBlob("tiktok-storyboard.pdf", pdfBlob);
+        setStatus("Storyboard PDF downloaded");
+        return;
+      }
+    }
+    downloadText("storyboard.txt", buildStoryboardText(), "text/plain");
+  });
 });
 
 downloadPromptsBtn.addEventListener("click", () => {
   downloadText("image-prompts.txt", buildImagePromptsText(), "text/plain");
 });
 
-downloadPackageBtn.addEventListener("click", downloadPackage);
+downloadPackageBtn.addEventListener("click", async () => {
+  await withLoading(downloadPackageBtn, downloadPackage);
+});
 
 localStorage.removeItem("socialCreativeLabDraft");
 updateConditionalUi();
@@ -824,6 +836,23 @@ async function generateStoryboardImagesForCurrent({ force = false } = {}) {
   }
 }
 
+async function generateAllStoryboardImages() {
+  if (!isTikTokPlatform()) return;
+  const storyboards = getStoryboards();
+  if (!storyboards.length) return;
+
+  const originalStoryboardIndex = state.selectedStoryboardIndex;
+  const originalVariantIndex = state.selectedVariantIndex;
+  for (let index = 0; index < storyboards.length; index += 1) {
+    state.selectedStoryboardIndex = index;
+    state.selectedVariantIndex = index;
+    await generateStoryboardImagesForCurrent();
+  }
+  state.selectedStoryboardIndex = originalStoryboardIndex;
+  state.selectedVariantIndex = originalVariantIndex;
+  renderStoryboard();
+}
+
 function syncStoryboardEdits() {
   const storyboard = currentStoryboard();
   if (!storyboard) return;
@@ -998,6 +1027,7 @@ function syncDownloadControls() {
   const isTikTok = isTikTokPlatform();
   downloadCaptionBtn.hidden = isTikTok;
   downloadPromptsBtn.hidden = isTikTok;
+  downloadStoryboardBtn.textContent = isTikTok ? "Download Storyboard PDF" : "Download Storyboard";
 }
 
 function hashtagsText(hashtags) {
@@ -1074,6 +1104,10 @@ ${state.imagePrompts
 
 function downloadText(filename, content, type) {
   const blob = new Blob([content], { type });
+  downloadBlob(filename, blob);
+}
+
+function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -1089,16 +1123,169 @@ function downloadDataUrl(dataUrl, filename) {
   link.click();
 }
 
+async function buildStoryboardPdfBlob() {
+  const jsPDF = window.jspdf?.jsPDF;
+  if (!jsPDF) {
+    setStatus("PDF library unavailable");
+    return null;
+  }
+
+  syncStoryboardEdits();
+  await generateAllStoryboardImages();
+
+  const storyboards = getStoryboards();
+  if (!storyboards.length) return null;
+
+  const formValues = collectPayload("pdf").form;
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  if (!doc.autoTable) {
+    setStatus("PDF table library unavailable");
+    return null;
+  }
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 8;
+
+  for (const [storyboardIndex, storyboard] of storyboards.entries()) {
+    if (storyboardIndex > 0) doc.addPage("a4", "landscape");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`${formValues.brand || "TikTok"} Storyboard`, margin, 12);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(
+      `Platform: TikTok | Format: ${formValues.contentFormat || ""} | Audience: ${formValues.audience || ""} | Version: ${storyboard.title || storyboardIndex + 1}`,
+      margin,
+      18,
+      { maxWidth: pageWidth - margin * 2 }
+    );
+    doc.text(
+      `Length: ${storyboard.recommendedLength || ""} | Pacing: ${storyboard.pacing || ""} | Audio: ${storyboard.audioStyle || ""}`,
+      margin,
+      23,
+      { maxWidth: pageWidth - margin * 2 }
+    );
+
+    const rows = await storyboardRowsForPdf(storyboard, storyboardIndex);
+    doc.autoTable({
+      startY: 28,
+      head: [["Scene", "Image", "Time", "Visual", "Action", "Audio / Voiceover", "On-Screen Text", "Purpose"]],
+      body: rows.map((row) => [row.scene, "", row.time, row.visual, row.action, row.audio, row.onScreenText, row.purpose]),
+      margin: { left: margin, right: margin },
+      tableWidth: "auto",
+      styles: {
+        cellPadding: 1.4,
+        fontSize: 6.4,
+        lineColor: [198, 207, 201],
+        lineWidth: 0.1,
+        overflow: "linebreak",
+        valign: "middle"
+      },
+      headStyles: {
+        fillColor: [239, 244, 241],
+        textColor: [19, 28, 24],
+        fontStyle: "bold"
+      },
+      bodyStyles: {
+        minCellHeight: 42
+      },
+      columnStyles: {
+        0: { cellWidth: 12 },
+        1: { cellWidth: 31 },
+        2: { cellWidth: 18 },
+        3: { cellWidth: 50 },
+        4: { cellWidth: 36 },
+        5: { cellWidth: 46 },
+        6: { cellWidth: 34 },
+        7: { cellWidth: 28 }
+      },
+      didDrawCell: (data) => {
+        if (data.section !== "body" || data.column.index !== 1) return;
+        const image = rows[data.row.index]?.pdfImage;
+        if (!image) return;
+        const imageWidth = Math.min(23, data.cell.width - 3);
+        const imageHeight = Math.min(38, imageWidth * (16 / 9), data.cell.height - 3);
+        const x = data.cell.x + (data.cell.width - imageWidth) / 2;
+        const y = data.cell.y + (data.cell.height - imageHeight) / 2;
+        doc.addImage(image.dataUrl, image.format, x, y, imageWidth, imageHeight);
+      }
+    });
+
+    const notesY = Math.min((doc.lastAutoTable?.finalY || 160) + 7, 196);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("Build Notes", margin, notesY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.text(storyboard.buildNotes || "", margin, notesY + 4, { maxWidth: pageWidth - margin * 2 });
+  }
+
+  return doc.output("blob");
+}
+
+async function storyboardRowsForPdf(storyboard, storyboardIndex) {
+  const images = state.storyboardImages[String(storyboardIndex)] || [];
+  return Promise.all(
+    (storyboard.scenes || []).map(async (scene, sceneIndex) => ({
+      scene: scene.scene || String(sceneIndex + 1),
+      time: scene.time || "",
+      visual: scene.visual || "",
+      action: scene.action || "",
+      audio: scene.audio || "",
+      onScreenText: scene.onScreenText || "",
+      purpose: scene.purpose || "",
+      pdfImage: await imageForPdf(images[sceneIndex])
+    }))
+  );
+}
+
+async function imageForPdf(image) {
+  if (!image?.dataUrl) return null;
+  if (image.mimeType?.includes("jpeg") || image.dataUrl.startsWith("data:image/jpeg")) {
+    return { dataUrl: image.dataUrl, format: "JPEG" };
+  }
+  if (image.mimeType?.includes("svg") || image.dataUrl.startsWith("data:image/svg")) {
+    const pngDataUrl = await svgDataUrlToPng(image.dataUrl);
+    return pngDataUrl ? { dataUrl: pngDataUrl, format: "PNG" } : null;
+  }
+  return { dataUrl: image.dataUrl, format: "PNG" };
+}
+
+function svgDataUrlToPng(dataUrl) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth || 1080;
+      canvas.height = image.naturalHeight || 1920;
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    image.onerror = () => resolve(null);
+    image.src = dataUrl;
+  });
+}
+
 async function downloadPackage() {
   const isTikTok = isTikTokPlatform();
 
   if (!window.JSZip) {
-    downloadText(isTikTok ? "storyboard.txt" : "caption.txt", isTikTok ? buildStoryboardText() : buildCaptionText(), "text/plain");
+    if (isTikTok) {
+      const pdfBlob = await buildStoryboardPdfBlob();
+      if (pdfBlob) downloadBlob("tiktok-storyboard.pdf", pdfBlob);
+    } else {
+      downloadText("caption.txt", buildCaptionText(), "text/plain");
+    }
     return;
   }
 
   const zip = new window.JSZip();
   zip.file("storyboard.txt", buildStoryboardText());
+  if (isTikTok) {
+    const pdfBlob = await buildStoryboardPdfBlob();
+    if (pdfBlob) zip.file("tiktok-storyboard.pdf", pdfBlob);
+  }
   if (!isTikTok) {
     zip.file("caption.txt", buildCaptionText());
     zip.file("image-prompts.txt", buildImagePromptsText());
@@ -1123,6 +1310,7 @@ async function downloadPackage() {
   link.download = "social-creative-lab-package.zip";
   link.click();
   URL.revokeObjectURL(url);
+  setStatus("Package downloaded");
 }
 
 function storyboardImagesForPackage() {
