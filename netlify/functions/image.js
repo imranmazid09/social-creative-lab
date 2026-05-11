@@ -39,7 +39,8 @@ export async function handler(event) {
     for (const [index, item] of prompts.entries()) {
       const response = await ai.models.generateContent({
         model: imageModel,
-        contents: buildImagePrompt(item.prompt, payload)
+        contents: buildImagePrompt(item.prompt, payload),
+        config: buildImageConfig(payload)
       });
 
       const parts = response.candidates?.[0]?.content?.parts || [];
@@ -177,4 +178,20 @@ function buildImagePrompt(basePrompt, payload) {
 
 Aspect ratio: ${settings.aspectRatio || "1:1"}.
 Important: no visible text, no captions, no words, no typography, no logos, no labels, no watermarks.`;
+}
+
+function buildImageConfig(payload) {
+  const aspectRatio = normalizeAspectRatio(payload.settings?.aspectRatio);
+  if (!aspectRatio) return {};
+  return {
+    imageConfig: {
+      aspectRatio
+    }
+  };
+}
+
+function normalizeAspectRatio(value) {
+  const normalized = String(value || "").trim();
+  const supported = new Set(["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]);
+  return supported.has(normalized) ? normalized : "";
 }

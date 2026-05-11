@@ -1,5 +1,5 @@
 const form = document.querySelector("#labForm");
-const saveStatus = document.querySelector("#saveStatus");
+const newSessionBtn = document.querySelector("#newSessionBtn");
 const generateHooksBtn = document.querySelector("#generateHooksBtn");
 const generateBtn = document.querySelector("#generateBtn");
 const resetBtn = document.querySelector("#resetBtn");
@@ -144,6 +144,14 @@ form.addEventListener("submit", async (event) => {
 });
 
 resetBtn.addEventListener("click", () => {
+  resetSession();
+});
+
+newSessionBtn.addEventListener("click", () => {
+  resetSession();
+});
+
+function resetSession() {
   form.reset();
   localStorage.removeItem("socialCreativeLabDraft");
   state.hooks = [];
@@ -161,10 +169,11 @@ resetBtn.addEventListener("click", () => {
     input.style.display = "none";
     input.required = false;
   });
+  resetImageAsset();
   updateConditionalUi();
   updateFormatGuidance();
-  setStatus("Reset");
-});
+  setStatus("Ready");
+}
 
 saveManualBtn.addEventListener("click", () => {
   const variant = selectedVariant();
@@ -272,15 +281,15 @@ document.querySelectorAll("#imageCount, #aspectRatio, #imageDirection, #imageCou
 });
 
 downloadCaptionBtn.addEventListener("click", () => {
-  downloadText("caption.md", buildCaptionMarkdown(), "text/markdown");
+  downloadText("caption.txt", buildCaptionText(), "text/plain");
 });
 
 downloadStoryboardBtn.addEventListener("click", () => {
-  downloadText("storyboard.md", buildStoryboardMarkdown(), "text/markdown");
+  downloadText("storyboard.txt", buildStoryboardText(), "text/plain");
 });
 
 downloadPromptsBtn.addEventListener("click", () => {
-  downloadText("image-prompts.md", buildImagePromptsMarkdown(), "text/markdown");
+  downloadText("image-prompts.txt", buildImagePromptsText(), "text/plain");
 });
 
 downloadPackageBtn.addEventListener("click", downloadPackage);
@@ -666,7 +675,7 @@ function showError(message) {
 }
 
 function setStatus(text) {
-  saveStatus.textContent = text;
+  newSessionBtn.dataset.status = text;
 }
 
 function hashtagsText(hashtags) {
@@ -674,66 +683,64 @@ function hashtagsText(hashtags) {
   return hashtags || "";
 }
 
-function buildCaptionMarkdown() {
+function buildCaptionText() {
   const variant = selectedVariant();
-  if (!variant) return "# Caption\n\nNo caption generated yet.\n";
+  if (!variant) return "Caption\n\nNo caption generated yet.\n";
   const formValues = collectPayload("download").form;
-  return `# ${variant.title || "Social Caption"}
+  return `${variant.title || "Social Caption"}
 
 Platform: ${formValues.platform}
 Format: ${formValues.contentFormat}
 Awareness Stage: ${formValues.awarenessStage}
 
-## Hook
+Hook
 ${variant.hook || ""}
 
-## Caption
+Caption
 ${variant.caption || ""}
 
-## CTA
+CTA
 ${variant.cta || ""}
 
-## Hashtags
+Hashtags
 ${hashtagsText(variant.hashtags)}
 
-## Image Concept
+Image Concept
 ${formatImageConcept(variant.imageConcept)}
 
-## Notes
+Notes
 ${variant.teachingNote || variant.revisionNote || ""}
 `;
 }
 
-function buildStoryboardMarkdown() {
+function buildStoryboardText() {
   const storyboard = state.result?.storyboard;
-  if (!storyboard) return "# Storyboard\n\nNo storyboard generated yet.\n";
+  if (!storyboard) return "Storyboard\n\nNo storyboard generated yet.\n";
   const rows = (storyboard.scenes || [])
     .map(
       (scene) =>
-        `| ${scene.scene || ""} | ${scene.time || ""} | ${scene.visual || ""} | ${scene.action || ""} | ${scene.audio || ""} | ${scene.onScreenText || ""} | ${scene.purpose || ""} |`
+        `Scene ${scene.scene || ""}\nTime: ${scene.time || ""}\nVisual: ${scene.visual || ""}\nAction: ${scene.action || ""}\nAudio / Voiceover: ${scene.audio || ""}\nOn-screen text suggestion: ${scene.onScreenText || ""}\nPurpose: ${scene.purpose || ""}`
     )
-    .join("\n");
-  return `# TikTok Storyboard
+    .join("\n\n");
+  return `TikTok Storyboard
 
 Recommended length: ${storyboard.recommendedLength || ""}
 Pacing: ${storyboard.pacing || ""}
 Audio style: ${storyboard.audioStyle || ""}
 
-| Scene | Time | Visual | Action | Audio / Voiceover | On-Screen Text | Purpose |
-|---|---|---|---|---|---|---|
 ${rows}
 
-## Build Notes
+Build Notes
 ${storyboard.buildNotes || ""}
 `;
 }
 
-function buildImagePromptsMarkdown() {
-  if (!state.imagePrompts.length) return "# Image Prompts\n\nNo image prompts generated yet.\n";
-  return `# Image Prompts
+function buildImagePromptsText() {
+  if (!state.imagePrompts.length) return "Image Prompts\n\nNo image prompts generated yet.\n";
+  return `Image Prompts
 
 ${state.imagePrompts
-  .map((prompt, index) => `## ${prompt.title || `Image Prompt ${index + 1}`}\n${prompt.prompt || ""}`)
+  .map((prompt, index) => `${prompt.title || `Image Prompt ${index + 1}`}\n${prompt.prompt || ""}`)
   .join("\n\n")}
 `;
 }
@@ -766,15 +773,14 @@ async function downloadPackage() {
   };
 
   if (!window.JSZip) {
-    downloadText("social-creative-lab-package.json", JSON.stringify(payload, null, 2), "application/json");
+    downloadText("caption.txt", buildCaptionText(), "text/plain");
     return;
   }
 
   const zip = new window.JSZip();
-  zip.file("caption.md", buildCaptionMarkdown());
-  zip.file("storyboard.md", buildStoryboardMarkdown());
-  zip.file("image-prompts.md", buildImagePromptsMarkdown());
-  zip.file("platform-output.json", JSON.stringify(payload, null, 2));
+  zip.file("caption.txt", buildCaptionText());
+  zip.file("storyboard.txt", buildStoryboardText());
+  zip.file("image-prompts.txt", buildImagePromptsText());
 
   state.images.forEach((image, index) => {
     const base64 = image.dataUrl.split(",")[1];
