@@ -190,13 +190,20 @@ h3 {
   align-items: flex-start;
   display: flex;
   gap: 0.82rem;
-  justify-content: space-between;
 }
 
 .heading-main {
   align-items: flex-start;
   display: flex;
   gap: 0.82rem;
+}
+
+.action-heading {
+  justify-content: space-between;
+}
+
+.action-heading button {
+  flex-shrink: 0;
 }
 
 .section-heading p {
